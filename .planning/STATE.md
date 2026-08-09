@@ -13,7 +13,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-02)
 
 | Phase | Status | Requirements | Notes |
 |-------|--------|--------------|-------|
-| 1 — Churn Prediction | 🔵 Not Started | CHURN-01..06 | Independent — can run in parallel with other phases |
+| 1 — Churn Prediction | 🟡 Context Gathered | CHURN-01..06 | Context captured, ready for planning |
 | 2 — RFM Analysis | 🔵 Not Started | RFM-01..06 | Independent — can run in parallel with other phases |
 | 3 — CLV Modeling | 🔵 Not Started | CLV-01..06 | Independent — can run in parallel with other phases |
 | 4 — Marketing Attribution | 🔵 Not Started | ATTR-01..06 | Independent — can run in parallel with other phases |

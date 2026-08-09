@@ -172,43 +172,43 @@
 
 ```python
 class Document(BaseModel):
-    id: str                    # Уникальный ID
-    source: str                # notional, google_docs, slack, confluence
-    source_url: str            # Ссылка на оригинал
-    title: str                 # Заголовок документа
-    content: str               # Полный текст
-    chunks: List[Chunk]        # Разбиение на chunks
+    id: str  # Уникальный ID
+    source: str  # notional, google_docs, slack, confluence
+    source_url: str  # Ссылка на оригинал
+    title: str  # Заголовок документа
+    content: str  # Полный текст
+    chunks: List[Chunk]  # Разбиение на chunks
     metadata: DocumentMetadata
     created_at: datetime
     updated_at: datetime
-    embeddings_version: str    # Версия модели эмбеддингов
+    embeddings_version: str  # Версия модели эмбеддингов
 
 
 class DocumentMetadata(BaseModel):
-    author: str                # Автор документа
-    last_modified_by: str      # Кто последний редактировал
-    tags: List[str]            # Теги/категории
-    access_level: str          # public, internal, confidential
-    department: List[str]      # Какие отделы имеют доступ
-    language: str              # ru, en
+    author: str  # Автор документа
+    last_modified_by: str  # Кто последний редактировал
+    tags: List[str]  # Теги/категории
+    access_level: str  # public, internal, confidential
+    department: List[str]  # Какие отделы имеют доступ
+    language: str  # ru, en
 
 
 class Chunk(BaseModel):
-    id: str                    # Уникальный ID чанка
-    document_id: str           # Ссылка на документ
-    chunk_index: int           # Порядок в документе
-    content: str               # Текст чанка
-    embedding: List[float]     # Векторное представление
+    id: str  # Уникальный ID чанка
+    document_id: str  # Ссылка на документ
+    chunk_index: int  # Порядок в документе
+    content: str  # Текст чанка
+    embedding: List[float]  # Векторное представление
     metadata: ChunkMetadata
 
 
 class ChunkMetadata(BaseModel):
-    start_char: int            # Позиция начала в документе
-    end_char: int              # Позиция конца
-    section_title: str         # Заголовок секции
-    page_number: int           # Номер страницы (если есть)
-    has_table: bool            # Содержит ли таблицу
-    has_code: bool             # Содержит ли код
+    start_char: int  # Позиция начала в документе
+    end_char: int  # Позиция конца
+    section_title: str  # Заголовок секции
+    page_number: int  # Номер страницы (если есть)
+    has_table: bool  # Содержит ли таблицу
+    has_code: bool  # Содержит ли код
 ```
 
 ---
@@ -314,7 +314,7 @@ GET /api/v1/query/q_abc123
 def evaluate_rag(test_questions: List[dict]) -> dict:
     """
     Evaluate RAG system on test set
-    
+
     test_questions: [
         {
             "question": "...",
@@ -324,28 +324,30 @@ def evaluate_rag(test_questions: List[dict]) -> dict:
     ]
     """
     results = []
-    
+
     for q in test_questions:
         response = rag_query(q["question"])
-        
+
         # Metrics
         relevance = llm_eval_relevance(q["expected_answer"], response["answer"])
         groundedness = llm_eval_groundedness(response["answer"], response["sources"])
         precision = calculate_precision(response["sources"], q["expected_sources"])
-        
-        results.append({
-            "question": q["question"],
-            "relevance": relevance,
-            "groundedness": groundedness,
-            "precision": precision,
-            "latency_ms": response["latency_ms"]
-        })
-    
+
+        results.append(
+            {
+                "question": q["question"],
+                "relevance": relevance,
+                "groundedness": groundedness,
+                "precision": precision,
+                "latency_ms": response["latency_ms"],
+            }
+        )
+
     return {
         "avg_relevance": np.mean([r["relevance"] for r in results]),
         "avg_groundedness": np.mean([r["groundedness"] for r in results]),
         "avg_precision": np.mean([r["precision"] for r in results]),
-        "p95_latency": np.percentile([r["latency_ms"] for r in results], 95)
+        "p95_latency": np.percentile([r["latency_ms"] for r in results], 95),
     }
 ```
 
@@ -443,20 +445,20 @@ TEST_QUESTIONS = [
         "question": "Что такое MAU и как его считают?",
         "expected_answer": "MAU (Monthly Active Users) — количество уникальных пользователей...",
         "expected_sources": ["Метрики продукта Volta", "Product Analytics Handbook"],
-        "difficulty": "easy"
+        "difficulty": "easy",
     },
     {
         "question": "Как запустить A/B тест? Опиши процесс.",
         "expected_answer": "Процесс запуска A/B теста включает: 1) Формулировка гипотезы...",
         "expected_sources": ["A/B Testing Process", "Experimentation Playbook"],
-        "difficulty": "medium"
+        "difficulty": "medium",
     },
     {
         "question": "Какой SQL запрос используется для расчета retention?",
         "expected_answer": "SELECT ... cohort analysis query ...",
         "expected_sources": ["SQL Queries Library", "Retention Analysis Notebook"],
-        "difficulty": "hard"
-    }
+        "difficulty": "hard",
+    },
 ]
 ```
 
@@ -484,15 +486,15 @@ RAG_PROMPT = """Ты помощник для поиска информации �
 
 ```python
 CHUNKING_CONFIG = {
-    "chunk_size": 500,        # tokens
-    "chunk_overlap": 50,      # tokens
-    "separator": "\n\n",      # paragraph boundaries
+    "chunk_size": 500,  # tokens
+    "chunk_overlap": 50,  # tokens
+    "separator": "\n\n",  # paragraph boundaries
     "add_metadata": {
         "section_title": True,
         "page_number": True,
         "has_table": True,
-        "has_code": True
-    }
+        "has_code": True,
+    },
 }
 ```
 

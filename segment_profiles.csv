@@ -1,0 +1,5 @@
+segment,n_users,avg_rev,revenue_share,pct_premium,avg_tx,avg_savings,avg_logins,avg_tenure,total_monthly_rev
+Power Users,6000,31.95,40.5,0.7763,38.0,5499.0,11.0,420.0,191708.0
+Growth Users,12000,12.98,32.9,0.2994,19.9,2400.0,7.0,260.0,155745.0
+Casual Users,16000,5.56,18.8,0.0762,11.0,347.0,4.0,170.0,88986.0
+Dormant Users,16000,2.31,7.8,0.0187,3.5,233.0,1.7,309.0,36881.0

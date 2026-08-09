@@ -1,99 +1,132 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code working in this repository.
 
 ## Project Overview
 
-This is a product analytics portfolio for a fictional fintech neobank ("Volta"). It consists of four sequential, standalone Python analysis scripts that form an end-to-end analytics narrative: funnel analysis → A/B testing → retention/cohort analysis → user segmentation. The codebase is educational/demonstrative and uses synthetic data.
+Product analytics portfolio for a fictional fintech neobank ("Volta"). Four
+sequential, standalone Python analysis scripts form an end-to-end narrative:
+**funnel → A/B testing → retention/cohort → segmentation**. Synthetic data,
+educational/demonstrative. Each script picks up where the previous one ended.
 
 ## Development Environment
 
-- **Python version:** 3.10+ (specified in `.python-version` as 3.14.2, but `pyproject.toml` requires `>=3.10`)
-- **Package manager:** `uv` (preferred). `uv.lock` is present and should be kept in sync with `pyproject.toml`.
-- **Virtual environment:** `.venv/` is present in the repo root.
+- **Python:** ≥3.10 (`pyproject.toml`; `.python-version` may pin a newer interpreter)
+- **Package manager:** `uv` (preferred). Keep `uv.lock` in sync with `pyproject.toml`.
+- **Linter/formatter:** `ruff` (dev dependency; configured in `pyproject.toml`:
+  `select = ["E","W","F","I","B","C4","UP"]`, `ignore = ["E501"]`, excludes `*.ipynb`).
 
 ## Common Commands
 
-- **Install dependencies:** `uv sync`
-- **Run a specific analysis script (must be run from repo root):**
-  ```bash
-  uv run python volta_funnel_analysis.py
-  uv run python volta_ab_testing.py
-  uv run python volta_retention_analysis.py
-  uv run python volta_segmentation.py
-  ```
-- **Run with activated venv instead:**
-  ```bash
-  source .venv/bin/activate
-  python volta_funnel_analysis.py
-  ```
-- **Add a dependency:** `uv add <package>`, then `uv sync`
-- **Format/lint:** There is no configured linter or formatter in this project. If adding one, configure it in `pyproject.toml`.
+```bash
+# Install (dev group required for ruff)
+uv sync --all-groups
+
+# Generate the synthetic datasets (seeded, reproducible)
+uv run python generate_ab_data.py
+uv run python generate_retention_data.py
+uv run python generate_segmentation_data.py
+
+# Run analyses (from repo root)
+uv run python volta_funnel_analysis.py
+uv run python volta_ab_testing.py
+uv run python volta_retention_analysis.py
+uv run python volta_segmentation.py
+
+# Lint / format
+uv run ruff check .
+uv run ruff format .
+```
 
 ## High-Level Architecture
 
-### Four-Project Portfolio Structure
+### Four-Project Portfolio
 
-Each top-level `volta_*.py` file is a self-contained analysis script. They are designed to be read and executed in order:
+Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
+`if __name__ == "__main__": main()`. Importing a module does **not** execute the
+analysis. All four import shared helpers from `utils/common.py`.
 
-1. **`volta_funnel_analysis.py`** — Onboarding funnel analysis. Loads `data/volta_funnel_data.csv`, computes step-by-step conversion rates, drop-offs, and statistical tests (Chi-square) across channels, devices, and age groups.
-2. **`volta_ab_testing.py`** — KYC progress bar A/B test analysis. Loads `volta_ab_experiment.csv` and `segment_results.csv`, performs sample size calculation, SRM check, primary metric analysis, and bootstrap confidence intervals.
-3. **`volta_retention_analysis.py`** — Cohort retention and LTV projection. Loads `cohort_retention_matrix.csv`, compares pre/post-fix cohorts, and calculates 12-month LTV for Free vs Premium plans.
-4. **`volta_segmentation.py`** — K-means clustering and monetization strategy. Loads `volta_users_features.csv` and `segment_profiles.csv`, runs `StandardScaler` + `KMeans` (k=4), uses PCA for visualization, and defines per-segment monetization scenarios.
+1. **`volta_funnel_analysis.py`** — onboarding funnel. Loads
+   `data/volta_funnel_data.csv` (committed). Step conversion, drop-offs
+   (split into absolute/relative — Registration = biggest absolute, KYC Complete
+   = biggest relative), Chi-square channel test, device/age segments, plots
+   (`viz1/viz2/viz3*.png`).
+2. **`volta_ab_testing.py`** — KYC progress bar A/B test. Loads
+   `volta_ab_experiment.csv` + `segment_results.csv`. Sample-size calc, SRM check,
+   bootstrap CI, Bonferroni/Holm/BH correction, AA-test under H₀, CUPED
+   (control-only θ), sensitivity at MDE, ship-gate (p<0.05 ∧ lift≥MDE ∧ no SRM).
+3. **`volta_retention_analysis.py`** — cohort retention + LTV. Loads
+   `cohort_retention_matrix.csv`. Pre/post Welch t-test + Cohen's d, **separate
+   Free vs Premium retention curves** (M6 ≈ 0.21 vs 0.55), ARPU × retention
+   LTV decomposition, fleet impact projection.
+4. **`volta_segmentation.py`** — K-means + PCA + monetization. Loads
+   `volta_users_features.csv` + `segment_profiles.csv`. **Data-driven K**
+   (marginal-gain elbow rule, silhouette validation), segment names guarded by
+   `assert len == optimal_k`, size_pct derived from `seg_summary` (not hardcoded),
+   Lorenz concentration curve, churn sensitivity, monetization scenarios.
 
-**Important:** Each script expects to be run from the repository root because it loads CSVs via relative paths (e.g., `pd.read_csv('volta_funnel_data.csv')` or `pd.read_csv('data/volta_funnel_data.csv')`). Running from another directory will cause `FileNotFoundError`.
+### Shared Helpers (`utils/common.py`)
 
-### Utility Modules (`utils/`)
+- `setup(style="dark_background", float_format="{:.2f}")` — scoped warnings
+  (FutureWarning/UserWarning only), plt style, pandas float format.
+- `print_section(title, width=70, blank=True)` / `print_subsection()`.
+- `data_path(filename)` — resolves repo-root first, then `data/` fallback.
+- `CONSTANTS` — LTV, ARPU free/premium, MDE, baseline conversion, α, power,
+  fleet assumptions. Centralised so the four scripts don't drift apart.
 
-- **`utils/pdf_processor.py`** — Functions for extracting tables/text from PDFs (`pdfplumber`, `pypdf`) and parsing bank statements. Not used by the four main scripts; intended for future report automation.
-- **`utils/report_generator.py`** — Excel report generation using `openpyxl`. Provides `generate_excel_report()`, `generate_funnel_excel()`, `generate_rfm_excel()`, and `generate_ab_test_excel()`. Placeholder stubs exist for PDF and Word generation.
+### Generators (seeded, reproducible)
+
+- `generate_ab_data.py` → `volta_ab_experiment.csv`, `segment_results.csv`
+- `generate_retention_data.py` → `cohort_retention_matrix.csv`
+  (pre-fix < 2024-09, post-fix ≥ 2024-09; Free retention curves match `volta_retention_analysis.py` PARAMS)
+- `generate_segmentation_data.py` → `volta_users_features.csv` (50k users, 4
+  separable clusters), `segment_profiles.csv`
+
+### Legacy Utility Modules (`utils/`)
+
+- `utils/report_generator.py` — Excel report generation (`openpyxl`). Not imported
+  by the four main scripts; available for future report automation.
+- `utils/pdf_processor.py` — PDF table extraction (`pdfplumber`, `pypdf`). Not
+  imported by the main scripts.
 
 ### Data Files
 
-- `data/volta_funnel_data.csv` — Synthetic user-level funnel data (10k rows) with boolean columns for each funnel stage plus `channel`, `device`, and `age_group`.
-- Other CSVs referenced by scripts (`volta_ab_experiment.csv`, `cohort_retention_matrix.csv`, `volta_users_features.csv`, `segment_results.csv`, `segment_profiles.csv`) are expected to be in the repo root or `data/` depending on the script.
+- `data/volta_funnel_data.csv` — committed funnel dataset (Project 1, 10k rows).
+- Other CSVs are produced by the generators above (repo root). `data_path()`
+  resolves both locations, so scripts run from repo root regardless of where the
+  CSV lands.
 
 ### Outputs
 
-- PNG visualizations (`viz*.png`) are generated by the scripts when matplotlib save logic is present.
-- `doc/` contains a PRD (`PRD_RAG_Documentation.md`) for a speculative internal RAG tool and Word/PDF report artifacts.
-- `presentations/` contains `.pptx` and `.pdf` versions of the portfolio slides.
+- `viz*.png` — funnel visualizations (generated by Project 1, tracked in git).
+- `.planning/` — GSD workflow artifacts (see below).
+- `doc/`, `presentations/` — PRD and slide artifacts (legacy/speculative).
 
 ## Working with This Codebase
 
-- **No test suite exists.** When making changes, run the relevant `volta_*.py` script directly and verify the printed output and any generated files.
-- **No CI/CD or linting is configured.** Changes are local-only.
-- **Dependencies are pinned via `uv.lock`.** If adding new packages, update both `pyproject.toml` and `uv.lock` via `uv add`.
-- **`main.py` is a stub.** It is not the entry point for the analyses.
+- **No test suite.** Verify changes by running the relevant `volta_*.py` and
+  checking printed output + generated files. `uv run python -c "import volta_X"`
+  must not print analysis (confirms the `main()` structure).
+- **Ruff is configured.** `uv run ruff check .` should pass clean; `ruff format .`
+  for whitespace/style.
+- **Dependencies pinned via `uv.lock`.** Add packages with `uv add`, then `uv sync`.
+- **Do not edit `uv.lock` by hand.**
 
 ## Tech Stack
 
 - `pandas`, `numpy` — data manipulation
-- `matplotlib`, `seaborn` — visualization (scripts set `plt.style.use('dark_background')`)
-- `scipy` — statistical tests (Chi-square, t-test)
-- `scikit-learn` — clustering and PCA (Project 4 only)
-- `openpyxl` — Excel report generation
-- `pdfplumber`, `pypdf` — PDF processing utilities
+- `matplotlib`, `seaborn` — visualization (`plt.style.use('dark_background')`)
+- `scipy` — statistical tests (Chi-square, Welch t-test, KS)
+- `scikit-learn` — `StandardScaler`, `KMeans`, `PCA`, `silhouette_score` (Project 4)
+- `openpyxl` — Excel report generation (utils)
+- `pdfplumber`, `pypdf` — PDF processing (utils)
 
 ## GSD Workflow
 
-This project uses the GSD (get-shit-done) planning system. Planning artifacts live in `.planning/`:
-
-- `PROJECT.md` — Living project context, requirements, decisions
-- `REQUIREMENTS.md` — Checkable v1/v2 requirements with traceability
-- `ROADMAP.md` — 5 phases, each mapped to requirements
-- `STATE.md` — Current phase status and blockers
-- `config.json` — Workflow mode (yolo), granularity (fine), parallelization
-
-**Workflow commands:**
-- `/gsd-discuss-phase N` — Gather context before planning Phase N
-- `/gsd-plan-phase N` — Create execution plan for Phase N
-- `/gsd-execute-phase N` — Run the plan for Phase N
-- `/gsd-transition N→N+1` — Validate Phase N, move to Phase N+1
-
-**Mode:** YOLO (auto-approve, execute directly)
-**Granularity:** Fine (5 focused phases, one per new script)
-**All phases are independent** — can be executed in parallel.
+Planning artifacts live in `.planning/`: `PROJECT.md`, `REQUIREMENTS.md`,
+`ROADMAP.md`, `STATE.md`, `config.json`. Workflow commands:
+`/gsd-discuss-phase N`, `/gsd-plan-phase N`, `/gsd-execute-phase N`,
+`/gsd-transition N→N+1`. Mode: YOLO; granularity: fine; phases independent.
 
 ---
-*CLAUDE.md updated: 2026-05-02*
+*CLAUDE.md updated: 2026-08-09*
