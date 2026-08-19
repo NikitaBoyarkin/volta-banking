@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from utils.common import data_path, print_section, setup
@@ -117,6 +117,72 @@ def fit_clusters(
     return df, km, pca, Xp
 
 
+def per_cluster_silhouette(X_scaled: np.ndarray, labels: np.ndarray) -> dict[int, float]:
+    """Mean silhouette score per cluster (from sample-level silhouette_samples).
+
+    The global silhouette_score hides which cluster is well-separated and which
+    is fuzzy; per-cluster means surface weak clusters that drag the average down.
+    """
+    sample_sil = silhouette_samples(X_scaled, labels)
+    return {
+        int(cid): float(sample_sil[labels == cid].mean()) for cid in np.unique(labels)
+    }
+
+
+def plot_segmentation(
+    df: pd.DataFrame,
+    k_info: dict[str, object],
+    optimal_k: int,
+    pca: PCA,
+    out_dir: Path = OUTPUT_DIR,
+) -> list[Path]:
+    """Save PCA scatter + elbow/silhouette PNGs to the project root."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    paths: list[Path] = []
+
+    # 1. PCA scatter colored by segment.
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for segment in sorted(df["segment"].unique()):
+        mask = df["segment"] == segment
+        ax.scatter(df.loc[mask, "pca1"], df.loc[mask, "pca2"], s=8, alpha=0.6, label=segment)
+    var1, var2 = pca.explained_variance_ratio_[:2] * 100
+    ax.set_title("User Segments — PCA Projection")
+    ax.set_xlabel(f"PC1 ({var1:.1f}% variance)")
+    ax.set_ylabel(f"PC2 ({var2:.1f}% variance)")
+    ax.legend(markerscale=3)
+    fig.tight_layout()
+    pca_path = out_dir / "segmentation_pca_scatter.png"
+    fig.savefig(pca_path, dpi=150)
+    plt.close(fig)
+    paths.append(pca_path)
+
+    # 2. Elbow + silhouette curves with the chosen K marked.
+    k_list = k_info["k_list"]  # type: ignore[assignment]
+    inertias = k_info["inertias"]  # type: ignore[assignment]
+    silhouettes = k_info["silhouettes"]  # type: ignore[assignment]
+    fig, ax1 = plt.subplots(figsize=(9, 6))
+    ax1.plot(k_list, inertias, "o-", color="tab:blue", label="Inertia")
+    ax1.set_xlabel("K")
+    ax1.set_ylabel("Inertia", color="tab:blue")
+    ax1.axvline(optimal_k, color="tab:red", linestyle="--", label=f"Optimal K={optimal_k}")
+    ax2 = ax1.twinx()
+    ax2.plot(k_list, silhouettes, "s--", color="tab:orange", label="Silhouette")
+    ax2.set_ylabel("Silhouette", color="tab:orange")
+    ax1.set_title("K Selection — Elbow & Silhouette")
+    fig.tight_layout()
+    elbow_path = out_dir / "segmentation_k_selection.png"
+    fig.savefig(elbow_path, dpi=150)
+    plt.close(fig)
+    paths.append(elbow_path)
+
+    return paths
+
+
 def assign_segment_names(df: pd.DataFrame, optimal_k: int) -> tuple[pd.DataFrame, dict[int, str]]:
     """Map cluster IDs → revenue-ranked segment names. Guarded: the name list
     must cover the chosen K, and every cluster must receive a name."""
@@ -179,7 +245,11 @@ def section_k_selection(k_info: dict[str, object]) -> int:
 
 
 def section_clustering(
-    df: pd.DataFrame, optimal_k: int, cluster_to_segment: dict[int, str], pca: PCA
+    df: pd.DataFrame,
+    X_scaled: np.ndarray,
+    optimal_k: int,
+    cluster_to_segment: dict[int, str],
+    pca: PCA,
 ) -> None:
     print_section("K-MEANS CLUSTERING & PCA DIMENSIONALITY REDUCTION")
     print("\nCluster sizes:")
@@ -201,6 +271,12 @@ def section_clustering(
             f"  Cluster {cid} → {cluster_to_segment[cid]:<15} "
             f"(Rank: {revenue_rank[cid]}, ARPU: €{cluster_revenue[cid]:.2f})"
         )
+
+    print("\nPer-cluster silhouette (mean of sample-level scores):")
+    sil_by_cluster = per_cluster_silhouette(X_scaled, df["cluster"].values)
+    for cid in sorted(sil_by_cluster):
+        quality = "well-separated" if sil_by_cluster[cid] >= 0.5 else "fuzzy / overlapping"
+        print(f"  Cluster {cid} ({cluster_to_segment[cid]:<15}): {sil_by_cluster[cid]:.3f}  {quality}")
 
 
 def _seg_size_pct(seg_summary: pd.DataFrame, segment: str) -> float:
@@ -660,7 +736,12 @@ def main() -> None:
 
     df, km, pca, Xp = fit_clusters(df, X_scaled, optimal_k)
     df, cluster_to_segment = assign_segment_names(df, optimal_k)
-    section_clustering(df, optimal_k, cluster_to_segment, pca)
+    section_clustering(df, X_scaled, optimal_k, cluster_to_segment, pca)
+
+    plot_paths = plot_segmentation(df, k_info, optimal_k, pca)
+    print_section("VISUALIZATIONS SAVED")
+    for p in plot_paths:
+        print(f"  {p.name} → {p}")
 
     section_profiles(seg_summary)
     section_insight_concentration(seg_summary)

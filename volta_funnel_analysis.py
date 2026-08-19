@@ -218,6 +218,34 @@ def chi_square_activation(df: pd.DataFrame, segment_col: str, a: str, b: str) ->
     }
 
 
+def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for a binomial proportion (95% by default).
+
+    More robust than the normal approximation for small n or proportions near
+    0/1. Funnel step conversions are computed on shrinking counts, so the last
+    steps have wide CIs that the normal interval understates.
+    """
+    if total <= 0:
+        return (0.0, 0.0)
+    p_hat = successes / total
+    denom = 1 + z**2 / total
+    center = (p_hat + z**2 / (2 * total)) / denom
+    half = z * np.sqrt(p_hat * (1 - p_hat) / total + z**2 / (4 * total**2)) / denom
+    return (center - half, center + half)
+
+
+def step_conversion_cis(metrics: dict[str, list[float]]) -> list[tuple[float, float]]:
+    """95% Wilson CIs for each step conversion rate (step 0 is 100% by definition)."""
+    counts = metrics["counts"]
+    cis: list[tuple[float, float]] = []
+    for i, count in enumerate(counts):
+        if i == 0:
+            cis.append((1.0, 1.0))
+        else:
+            cis.append(wilson_ci(int(count), int(counts[i - 1])))
+    return cis
+
+
 # ── Plots ────────────────────────────────────────────────────────────────────
 def plot_main_funnel(metrics: dict[str, list[float]], out: Path) -> None:
     """Funnel counts + step-conversion twin-axis chart."""
@@ -315,6 +343,13 @@ def section_core_funnel(
     print_section("CORE FUNNEL METRICS")
     metrics = compute_funnel(df)
     print("\n" + funnel_summary_table(metrics).to_string(index=False))
+
+    cis = step_conversion_cis(metrics)
+    print("\nStep conversion with 95% Wilson confidence intervals:")
+    for label, step_conv, (lo, hi) in zip(
+        FUNNEL_LABELS, metrics["step_conv"], cis, strict=True
+    ):
+        print(f"  {label:<20} {step_conv:>6.1f}%  (95% CI: {lo * 100:.1f}% – {hi * 100:.1f}%)")
 
     drops = biggest_drops(metrics)
     end_to_end = metrics["overall_conv"][-1]

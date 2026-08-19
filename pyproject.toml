@@ -21,6 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0.0",
     "ruff>=0.6.0",
 ]
 
@@ -36,3 +37,7 @@ quote-style = "double"
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E501", "E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

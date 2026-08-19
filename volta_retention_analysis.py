@@ -85,6 +85,25 @@ def cohens_d(a: list[float], b: list[float]) -> float:
     return float((b_arr.mean() - a_arr.mean()) / np.sqrt(pooled_var)) if pooled_var > 0 else 0.0
 
 
+def bootstrap_ci(
+    values: list[float], n_boot: int = 10_000, seed: int = 42
+) -> tuple[float, float]:
+    """95% percentile bootstrap CI for the mean of a small sample.
+
+    Cohort-level retention values are few (8 pre + 4 post cohorts), so the
+    normal approximation is unreliable; the bootstrap makes no normality
+    assumption and directly reflects the observed spread.
+    """
+    if not values:
+        return (float("nan"), float("nan"))
+    rng = np.random.default_rng(seed)
+    arr = np.asarray(values)
+    means = np.array(
+        [rng.choice(arr, size=len(arr), replace=True).mean() for _ in range(n_boot)]
+    )
+    return (float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5)))
+
+
 # ── Load ──────────────────────────────────────────────────────────────────────
 def load_data() -> pd.DataFrame:
     df = pd.read_csv(data_path("cohort_retention_matrix.csv"), index_col="cohort")
@@ -146,16 +165,14 @@ def section_insight2_plateau(df: pd.DataFrame) -> None:
 
 def section_insight34_channel_plan() -> None:
     print_section("INSIGHT 3 & 4: Retention by Channel & Subscription Plan")
-    print("\nTypical retention patterns (from segment analysis):")
-    print("\nBy Channel (M1 / M3 / M6 retention):")
-    print("  • Referral:     64% / 40% / 28%  ✅ Best performer")
-    print("  • Organic:      57% / 36% / 24%")
-    print("  • Paid social:  49% / 27% / 17%  ⚠️  Lowest performer")
     print("\nBy Plan (M6 retention, from LTV curves below):")
     print("  • Free (pre-fix):     ~21%   ⚠️  Low retention")
     print("  • Premium (pre-fix):  ~55%   ✅ ~2.6× better retention")
     print("\n📌 Strategic insight: Premium plan is the #1 retention lever")
     print("   Plan-based retention gap exceeds channel differences.")
+    print("\n⚠️  Channel-level retention (referral/organic/paid social) is not")
+    print("   available in this dataset — the cohort matrix is plan-agnostic.")
+    print("   Channel analysis lives in Project 1 (funnel) and Project 4 (segmentation).")
 
 
 def section_ltv() -> dict[str, float]:
@@ -329,6 +346,28 @@ def section_stat_test(df: pd.DataFrame) -> dict[str, float]:
     return result
 
 
+def section_bootstrap_ci(df: pd.DataFrame) -> None:
+    """95% bootstrap CIs for M1/M3/M6 retention, pre vs post."""
+    print_section("BOOTSTRAP CONFIDENCE INTERVALS (M1 / M3 / M6)")
+    pre, post = split_cohorts(df.index)
+    for col, label in [("month_1", "M1"), ("month_3", "M3"), ("month_6", "M6")]:
+        pre_vals = cohort_metric_values(df, pre, col)
+        post_vals = cohort_metric_values(df, post, col)
+        pre_lo, pre_hi = bootstrap_ci(pre_vals)
+        post_lo, post_hi = bootstrap_ci(post_vals)
+        pre_mean = np.mean(pre_vals) if pre_vals else np.nan
+        post_mean = np.mean(post_vals) if post_vals else np.nan
+        overlap = not (post_lo > pre_hi or post_hi < pre_lo)
+        marker = "⚠️  CIs overlap" if overlap else "✅ CIs disjoint"
+        print(f"\n{label} retention (95% bootstrap CI):")
+        print(f"  Pre-fix:  {pre_mean * 100:>5.1f}%  [{pre_lo * 100:>5.1f}%, {pre_hi * 100:>5.1f}%]  ({len(pre_vals)} cohorts)")
+        print(f"  Post-fix: {post_mean * 100:>5.1f}%  [{post_lo * 100:>5.1f}%, {post_hi * 100:>5.1f}%]  ({len(post_vals)} cohorts)")
+        print(f"  {marker}")
+    print("\n   Bootstrap resamples cohort-level means (n=10k, seed=42); disjoint")
+    print("   CIs support a real step-change, overlapping CIs mean the difference")
+    print("   is within sampling noise given the small cohort count.")
+
+
 def section_summary(ltvs: dict[str, float], test: dict[str, float]) -> None:
     print_section("SUMMARY: 6 KEY INSIGHTS & RECOMMENDATIONS")
     insights = [
@@ -419,6 +458,7 @@ def main() -> None:
     fleet = section_fleet_impact(ltvs)
     section_cohort_summary(df)
     test = section_stat_test(df)
+    section_bootstrap_ci(df)
     section_summary(ltvs, test)
     section_bridge()
     section_final(ltvs, fleet, test)

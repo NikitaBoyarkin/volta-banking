@@ -204,6 +204,23 @@ def cuped_adjust(
     return y - theta * x_pre, theta
 
 
+def cuped_variance_reduction(
+    y: np.ndarray, x_pre: np.ndarray, treatment: np.ndarray
+) -> float:
+    """% variance reduction from CUPED, measured on the control group.
+
+    Var(Y_cuped) = Var(Y) * (1 - rho^2) with rho = corr(Y, X_pre) on control,
+    so the reduction is the squared correlation between outcome and covariate.
+    """
+    control_mask = treatment == 0
+    var_y = float(np.var(y[control_mask]))
+    if var_y == 0:
+        return 0.0
+    y_cuped, _ = cuped_adjust(y, x_pre, treatment)
+    var_cuped = float(np.var(y_cuped[control_mask]))
+    return (1 - var_cuped / var_y) * 100
+
+
 # ── Bucketing ────────────────────────────────────────────────────────────────
 def make_buckets(
     user_ids: np.ndarray, values: np.ndarray, n_buckets: int = 100, agg: str = "sum"
@@ -486,10 +503,12 @@ def section_cuped(df: pd.DataFrame) -> None:
     y = df["kyc_completed"].values.astype(float)
     treatment = (df["group"] == "treatment").values
     y_cuped, theta = cuped_adjust(y, x_pre, treatment)
+    var_reduction = cuped_variance_reduction(y, x_pre, treatment)
     _, p_raw = stats.ttest_ind(y[treatment == 1], y[treatment == 0])
     _, p_cuped = stats.ttest_ind(y_cuped[treatment == 1], y_cuped[treatment == 0])
     print(f"Pre-covariate: {pre_cols[0]}")
     print(f"theta (control-only): {theta:.4f}")
+    print(f"Variance reduction:   {var_reduction:.1f}%  (Var(Y_cuped) = Var(Y) * (1 - rho^2))")
     print(f"Raw p-value:    {p_raw:.4f}")
     print(f"CUPED p-value:  {p_cuped:.4f}  (lower variance → higher sensitivity)")
     print("   theta computed on control group only (standard CUPED); computing it")
