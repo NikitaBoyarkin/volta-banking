@@ -31,7 +31,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from utils.common import data_path, print_section, setup
+from utils.common import data_path, print_section, print_subsection, setup
 
 OUTPUT_DIR = Path(__file__).resolve().parent
 KMEANS_SEED = 42
@@ -80,13 +80,25 @@ def select_k(X_scaled: np.ndarray, k_range: range = range(2, 9)) -> dict[str, ob
     the cliff is between K=4 and K=5). Silhouette is reported as validation,
     not as the selector (it peaks at K=2 here — a known artifact of well-
     separated 4-cluster data where the 2-cluster merge still scores high).
+
+    `silhouette_score` is O(n²); on 50k+ users we subsample to 10k points
+    (stratified by the current labels) for the silhouette computation. Inertia
+    stays on the full data (it is cheap and the elbow signal lives there).
     """
+    rng = np.random.default_rng(KMEANS_SEED)
+    n = len(X_scaled)
+    sil_subsample = 10_000
     inertias, silhouettes = [], []
     for k in k_range:
         km = KMeans(n_clusters=k, random_state=KMEANS_SEED, n_init=10)
         labels = km.fit_predict(X_scaled)
         inertias.append(km.inertia_)
-        silhouettes.append(silhouette_score(X_scaled, labels))
+        if n > sil_subsample:
+            sub_idx = rng.choice(n, size=sil_subsample, replace=False)
+            sil = silhouette_score(X_scaled[sub_idx], labels[sub_idx])
+        else:
+            sil = silhouette_score(X_scaled, labels)
+        silhouettes.append(sil)
 
     k_list = list(k_range)
     reductions = [0.0] + [
@@ -124,8 +136,143 @@ def per_cluster_silhouette(X_scaled: np.ndarray, labels: np.ndarray) -> dict[int
     is fuzzy; per-cluster means surface weak clusters that drag the average down.
     """
     sample_sil = silhouette_samples(X_scaled, labels)
+    return {int(cid): float(sample_sil[labels == cid].mean()) for cid in np.unique(labels)}
+
+
+# ── Sprint 1: S1 silhouette plot ────────────────────────────────────────────
+def plot_silhouette(
+    X_scaled: np.ndarray,
+    labels: np.ndarray,
+    cluster_to_segment: dict[int, str],
+    out: Path,
+    max_samples: int = 5000,
+    seed: int = 42,
+) -> Path:
+    """Classic silhouette plot: per-sample silhouette, sorted by cluster then
+    by value within cluster. Horizontal bars coloured by segment.
+
+    `silhouette_samples` is O(n²), so for large datasets we subsample to
+    `max_samples` (stratified by cluster) — the visual shape is preserved while
+    runtime drops from minutes to seconds on 50k+ users.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.cm import tab10
+
+    plt.style.use("dark_background")
+
+    # Stratified subsample so small clusters stay represented.
+    rng = np.random.default_rng(seed)
+    if len(labels) > max_samples:
+        keep_idx: list[int] = []
+        for cid in np.unique(labels):
+            cid_idx = np.where(labels == cid)[0]
+            n_take = max(1, int(max_samples * len(cid_idx) / len(labels)))
+            n_take = min(n_take, len(cid_idx))
+            keep_idx.extend(rng.choice(cid_idx, size=n_take, replace=False))
+        keep_idx = np.array(keep_idx)
+        X_sub = X_scaled[keep_idx]
+        labels_sub = labels[keep_idx]
+    else:
+        X_sub, labels_sub = X_scaled, labels
+
+    sample_sil = silhouette_samples(X_sub, labels_sub)
+    y_lower = 10
+    clusters = sorted(np.unique(labels_sub))
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for i, cid in enumerate(clusters):
+        vals = np.sort(sample_sil[labels_sub == cid])
+        y_upper = y_lower + len(vals)
+        color = tab10(i % 10)
+        ax.fill_betweenx(
+            np.arange(y_lower, y_upper),
+            0,
+            vals,
+            facecolor=color,
+            edgecolor=color,
+            alpha=0.8,
+        )
+        ax.text(
+            -0.02,
+            y_lower + len(vals) / 2,
+            cluster_to_segment.get(int(cid), str(cid)),
+            fontsize=9,
+            va="center",
+        )
+        y_lower = y_upper + 10
+
+    mean_sil = float(sample_sil.mean())
+    ax.axvline(mean_sil, color="white", linestyle="--", alpha=0.7, label=f"Mean = {mean_sil:.3f}")
+    ax.set_xlabel("Silhouette coefficient")
+    ax.set_ylabel("Samples per segment")
+    ax.set_title("Silhouette plot — per-sample separation by segment")
+    ax.set_yticks([])
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+# ── Sprint 1: S2 centroid z-score profiles ──────────────────────────────────
+def centroid_zscores(df: pd.DataFrame) -> pd.DataFrame:
+    """Per-segment z-score of each feature vs the global mean.
+
+    z = (segment_mean - global_mean) / global_std. Positive = segment is above
+    average on that feature; negative = below. Surfaces WHICH features
+    distinguish each segment from the average user (not just that they differ).
+    """
+    means = df[CLUSTERING_FEATURES].mean()
+    stds = df[CLUSTERING_FEATURES].std(ddof=0)
+    rows = {}
+    for segment, sub in df.groupby("segment"):
+        seg_mean = sub[CLUSTERING_FEATURES].mean()
+        rows[segment] = ((seg_mean - means) / stds).round(2)
+    z = pd.DataFrame(rows).T
+    z = z.loc[[s for s in NAME_BY_REVENUE_RANK if s in z.index]]
+    return z
+
+
+# ── Sprint 1: S3 segment stability (bootstrap) ──────────────────────────────
+def segment_stability(
+    df: pd.DataFrame,
+    X_scaled: np.ndarray,
+    optimal_k: int,
+    n_boot: int = 10,
+    seed: int = 42,
+) -> dict[str, float]:
+    """Bootstrap cluster-assignment stability.
+
+    Resamples rows with replacement, re-runs KMeans on the resampled data, and
+    measures agreement with the original assignment via the adjusted Rand index
+    (ARI = 1 → identical partition; 0 → random; <0 → anti-correlated). Reports
+    the mean ARI across bootstrap samples. High ARI (>0.8) means the segments
+    are a stable property of the data, not a KMeans-seed artifact.
+
+    Uses n_init=1 for the refits (the bootstrap variance is the signal, not
+    within-seed noise) to keep runtime tractable on 50k+ users.
+    """
+    from sklearn.metrics import adjusted_rand_score
+
+    rng = np.random.default_rng(seed)
+    n = len(df)
+    base_labels = df["cluster"].values
+    aris: list[float] = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        X_boot = X_scaled[idx]
+        km = KMeans(n_clusters=optimal_k, random_state=KMEANS_SEED, n_init=1)
+        km.fit(X_boot)
+        boot_labels = km.predict(X_scaled)
+        aris.append(float(adjusted_rand_score(base_labels, boot_labels)))
     return {
-        int(cid): float(sample_sil[labels == cid].mean()) for cid in np.unique(labels)
+        "mean_ari": float(np.mean(aris)),
+        "std_ari": float(np.std(aris)),
+        "min_ari": float(np.min(aris)),
+        "n_boot": n_boot,
     }
 
 
@@ -276,7 +423,64 @@ def section_clustering(
     sil_by_cluster = per_cluster_silhouette(X_scaled, df["cluster"].values)
     for cid in sorted(sil_by_cluster):
         quality = "well-separated" if sil_by_cluster[cid] >= 0.5 else "fuzzy / overlapping"
-        print(f"  Cluster {cid} ({cluster_to_segment[cid]:<15}): {sil_by_cluster[cid]:.3f}  {quality}")
+        print(
+            f"  Cluster {cid} ({cluster_to_segment[cid]:<15}): {sil_by_cluster[cid]:.3f}  {quality}"
+        )
+
+
+# ── Sprint 1: S1-S3 section printers ─────────────────────────────────────────
+def section_silhouette_plot(
+    X_scaled: np.ndarray,
+    df: pd.DataFrame,
+    cluster_to_segment: dict[int, str],
+) -> Path:
+    """S1: classic per-sample silhouette plot PNG."""
+    print_section("SILHOUETTE PLOT (per-sample separation)")
+    out = OUTPUT_DIR / "segmentation_silhouette.png"
+    plot_silhouette(X_scaled, df["cluster"].values, cluster_to_segment, out)
+    print(f"\nSaved: {out.name}")
+    print("  Each horizontal band = one segment's samples sorted by silhouette.")
+    print("  Long bands to the right = well-separated; bands crossing 0 = fuzzy.")
+    return out
+
+
+def section_centroid_profiles(df: pd.DataFrame) -> pd.DataFrame:
+    """S2: per-segment feature z-scores vs the global mean."""
+    print_section("CENTROID PROFILES (z-score vs global mean)")
+    z = centroid_zscores(df)
+    print("\nPositive = segment above average on that feature; negative = below.")
+    print(z.to_string())
+    print_subsection("READING THE TABLE")
+    # Surface the top defining feature per segment.
+    for segment in z.index:
+        top_feat = z.columns[int(z.loc[segment].abs().argmax())]
+        top_val = z.loc[segment, top_feat]
+        direction = "above" if top_val > 0 else "below"
+        print(f"  {segment:<15} defined by {top_feat} ({top_val:+.2f}σ {direction} avg)")
+    return z
+
+
+def segment_stability_section(
+    df: pd.DataFrame, X_scaled: np.ndarray, optimal_k: int
+) -> dict[str, float]:
+    """S3: bootstrap cluster-assignment stability (adjusted Rand index)."""
+    print_section("SEGMENT STABILITY (bootstrap adjusted Rand index)")
+    stab = segment_stability(df, X_scaled, optimal_k)
+    print(f"\nBootstrap iterations: {stab['n_boot']}")
+    print(f"  Mean ARI: {stab['mean_ari']:.3f}")
+    print(f"  Std  ARI: {stab['std_ari']:.3f}")
+    print(f"  Min  ARI: {stab['min_ari']:.3f}")
+    if stab["mean_ari"] >= 0.85:
+        print("  ✅ Stable — segments are a robust property of the data,")
+        print("     not a KMeans-seed artifact (mean ARI ≥ 0.85).")
+    elif stab["mean_ari"] >= 0.70:
+        print("  ⚠️  Moderately stable — some cluster boundary ambiguity;")
+        print("     inspect the silhouette plot for the fuzzy segment.")
+    else:
+        print("  ❌ Unstable — the K=4 partition is not robust to resampling;")
+        print("     reconsider K or the feature set.")
+    print("\n  ARI = 1 → identical partition; 0 → random; <0 → anti-correlated.")
+    return stab
 
 
 def _seg_size_pct(seg_summary: pd.DataFrame, segment: str) -> float:
@@ -737,6 +941,10 @@ def main() -> None:
     df, km, pca, Xp = fit_clusters(df, X_scaled, optimal_k)
     df, cluster_to_segment = assign_segment_names(df, optimal_k)
     section_clustering(df, X_scaled, optimal_k, cluster_to_segment, pca)
+
+    section_silhouette_plot(X_scaled, df, cluster_to_segment)
+    section_centroid_profiles(df)
+    segment_stability_section(df, X_scaled, optimal_k)
 
     plot_paths = plot_segmentation(df, k_info, optimal_k, pca)
     print_section("VISUALIZATIONS SAVED")

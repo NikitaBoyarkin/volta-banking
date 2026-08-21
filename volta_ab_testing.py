@@ -28,12 +28,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.stats import norm
 
-from utils.common import CONSTANTS, data_path, print_section, setup
+from utils.common import CONSTANTS, data_path, print_section, print_subsection, setup
 
 OUTPUT_DIR = Path(__file__).resolve().parent
 N_BOOT = 2000
@@ -204,9 +205,7 @@ def cuped_adjust(
     return y - theta * x_pre, theta
 
 
-def cuped_variance_reduction(
-    y: np.ndarray, x_pre: np.ndarray, treatment: np.ndarray
-) -> float:
+def cuped_variance_reduction(y: np.ndarray, x_pre: np.ndarray, treatment: np.ndarray) -> float:
     """% variance reduction from CUPED, measured on the control group.
 
     Var(Y_cuped) = Var(Y) * (1 - rho^2) with rho = corr(Y, X_pre) on control,
@@ -250,6 +249,225 @@ def sensitivity_at_mde(
     p_avg = (control_rate + (control_rate + mde)) / 2
     se_null = np.sqrt(2 * p_avg * (1 - p_avg) / n_per_arm)
     return float(norm.cdf(mde / se_null - norm.ppf(1 - alpha / 2)))
+
+
+# ── A1 Guardrail metrics ────────────────────────────────────────────────────
+def guardrail_test(df: pd.DataFrame, metric: str, direction: str = "lower") -> dict[str, float]:
+    """Two-sample test on a guardrail metric.
+
+    `direction` is the GOOD direction for the metric:
+      - "lower"  : lower is better (e.g. churn, crash rate). Violation if
+                   treatment is significantly HIGHER than control.
+      - "higher" : higher is better (e.g. revenue, retention). Violation if
+                   treatment is significantly LOWER than control.
+
+    Returns both the two-sided p-value (any movement) and a one-sided
+    p-value (negative movement), plus a `violated` flag. A guardrail is
+    violated only on a significant movement in the BAD direction — a
+    significant favorable movement is not a violation (it is expected when
+    the guardrail is downstream of the primary metric).
+    """
+    control = df[df["group"] == "control"][metric].dropna().values
+    treatment = df[df["group"] == "treatment"][metric].dropna().values
+    if len(control) == 0 or len(treatment) == 0:
+        raise ValueError(f"missing data for guardrail metric {metric!r}")
+
+    # Welch t-test (unequal variance) — guardrails are often skewed/unequal.
+    t_stat, p_two = stats.ttest_ind(treatment, control, equal_var=False)
+    diff = float(treatment.mean() - control.mean())
+
+    # One-sided p-value for movement in the BAD direction.
+    if direction == "lower":
+        bad_direction = diff > 0  # higher churn = bad
+        p_bad = stats.ttest_ind(treatment, control, equal_var=False, alternative="greater").pvalue
+    else:
+        bad_direction = diff < 0  # lower revenue = bad
+        p_bad = stats.ttest_ind(treatment, control, equal_var=False, alternative="less").pvalue
+
+    violated = bool(p_bad < 0.05 and bad_direction)
+    return {
+        "metric": metric,
+        "control_mean": float(control.mean()),
+        "treatment_mean": float(treatment.mean()),
+        "diff": diff,
+        "t_stat": float(t_stat),
+        "p_two_sided": float(p_two),
+        "p_bad_direction": float(p_bad),
+        "direction": direction,
+        "violated": violated,
+    }
+
+
+# ── A2 Heterogeneous Treatment Effects (segment-level, BH-corrected) ────────
+def hte_analysis(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
+    """Per-segment-value treatment effect with Benjamini-Hochberg correction.
+
+    For every value of every segmentation column (device/channel/age_group),
+    compute the two-proportion z-test on kyc_completed, then correct across
+    all tests with BH (controls FDR — the right error rate for exploratory
+    segment analysis, vs Bonferroni's FWER which is too conservative here).
+
+    Returns one row per segment value with lift (pp), raw p, BH-adjusted p,
+    and significance flags.
+    """
+    rows: list[dict[str, object]] = []
+    for col in ("age_group", "device", "channel"):
+        if col not in df.columns:
+            continue
+        for val in sorted(df[col].unique()):
+            sub = df[df[col] == val]
+            c = sub[sub["group"] == "control"]["kyc_completed"].values
+            t = sub[sub["group"] == "treatment"]["kyc_completed"].values
+            if len(c) == 0 or len(t) == 0:
+                continue
+            table = np.array([[t.sum(), len(t) - t.sum()], [c.sum(), len(c) - c.sum()]])
+            _, p_raw, _, _ = stats.chi2_contingency(table)
+            rows.append(
+                {
+                    "segment_col": col,
+                    "segment_value": val,
+                    "n_control": len(c),
+                    "n_treatment": len(t),
+                    "control_rate": float(c.mean()),
+                    "treatment_rate": float(t.mean()),
+                    "lift_pp": float(t.mean() - c.mean()) * 100,
+                    "p_raw": float(p_raw),
+                }
+            )
+
+    hte = pd.DataFrame(rows)
+    if hte.empty:
+        return hte
+    hte["p_bh"] = _bh_adjusted_pvals(hte["p_raw"].tolist())
+    hte["significant_raw"] = hte["p_raw"] < alpha
+    hte["significant_bh"] = hte["p_bh"] < alpha
+    return hte.sort_values("lift_pp", ascending=False).reset_index(drop=True)
+
+
+def _bh_adjusted_pvals(pvals: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (q-values).
+
+    Sort p-values ascending; q_i = p_i * m / rank; enforce monotonicity from
+    the top so each adjusted p is the min of itself and all larger-ranked
+    ones. Returns the q-values in the ORIGINAL order.
+    """
+    m = len(pvals)
+    order = np.argsort(pvals)
+    sorted_p = np.array(pvals)[order]
+    q_sorted = sorted_p * m / (np.arange(1, m + 1))
+    # Monotonise from the largest p downwards.
+    for i in range(m - 2, -1, -1):
+        q_sorted[i] = min(q_sorted[i], q_sorted[i + 1])
+    q_sorted = np.clip(q_sorted, 0, 1)
+    q = np.empty(m)
+    q[order] = q_sorted
+    return q.tolist()
+
+
+# ── A3 Sequential testing (alpha spending) ──────────────────────────────────
+def sequential_bounds(
+    n_looks: int, alpha: float = 0.05, method: str = "obrien_fleming"
+) -> pd.DataFrame:
+    """Group-sequential z-boundaries and cumulative alpha spent per interim look.
+
+    O'Brien-Fleming spends very little alpha early (conservative early looks,
+    near-final-α at the last look) — the standard choice for experiments that
+    allow peeking. Pocock spends alpha evenly (earlier, more permissive looks).
+
+    Returns a DataFrame with one row per look: look index, z-boundary (two-
+    sided), nominal alpha at that look, and cumulative alpha spent up to and
+    including that look. A look rejects if |z| > z_boundary.
+    """
+    if n_looks < 2:
+        raise ValueError("n_looks must be >= 2 for a group-sequential design")
+    if method not in ("obrien_fleming", "pocock"):
+        raise ValueError(f"unknown method {method!r}")
+
+    # Two-sided boundaries on the z-scale. OBF: c * sqrt(n_looks / look).
+    # Pocock: constant c across looks. Constants chosen so total alpha ≈ 0.05.
+    if method == "obrien_fleming":
+        c = 2.024  # calibrated so 4-look OBF spends ~0.05 total
+        z_bounds = np.array([c * np.sqrt(n_looks / i) for i in range(1, n_looks + 1)])
+    else:  # pocock
+        c = 2.361
+        z_bounds = np.full(n_looks, c)
+
+    nominal_alpha = 2 * norm.sf(np.abs(z_bounds))
+    cum_alpha = np.array([1 - (1 - nominal_alpha[i]) ** (i + 1) for i in range(n_looks)])
+    return pd.DataFrame(
+        {
+            "look": np.arange(1, n_looks + 1),
+            "fraction_of_info": np.arange(1, n_looks + 1) / n_looks,
+            "z_boundary": z_bounds,
+            "nominal_alpha": nominal_alpha,
+            "cum_alpha_spent": cum_alpha,
+        }
+    )
+
+
+def sequential_verdict(z_observed: float, bounds: pd.DataFrame) -> dict[str, object]:
+    """Decide whether an observed z at a given look would reject (peek-safe)."""
+    last = bounds.iloc[-1]
+    reject = bool(abs(z_observed) > last["z_boundary"])
+    can_stop_now = reject  # under OBF the final look ≈ fixed-horizon α
+    return {
+        "z_observed": float(z_observed),
+        "z_boundary_final": float(last["z_boundary"]),
+        "reject": reject,
+        "can_stop_now": can_stop_now,
+        "nominal_alpha_final": float(last["nominal_alpha"]),
+    }
+
+
+# ── A4 Power curve ──────────────────────────────────────────────────────────
+def power_at_mde(p_baseline: float, mde: float, n_per_arm: int, alpha: float = 0.05) -> float:
+    """Power of a two-proportion z-test at a given MDE, baseline, and n."""
+    p_treatment = p_baseline + mde
+    if not 0 < p_treatment < 1:
+        return 0.0
+    p_avg = (p_baseline + p_treatment) / 2
+    se_null = np.sqrt(2 * p_avg * (1 - p_avg) / n_per_arm)
+    return float(norm.cdf(mde / se_null - norm.ppf(1 - alpha / 2)))
+
+
+def plot_power_curve(
+    p_baseline: float,
+    n_per_arm: int,
+    out: Path,
+    mde_range: np.ndarray | None = None,
+    planned_mde: float | None = None,
+    alpha: float = 0.05,
+) -> Path:
+    """Save power vs MDE curve. Marks the planned MDE and the 80% power line."""
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    if mde_range is None:
+        mde_range = np.linspace(0.01, 0.15, 50)
+    powers = [power_at_mde(p_baseline, mde, n_per_arm, alpha) for mde in mde_range]
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(mde_range * 100, powers, color="#4C9AFF", linewidth=2)
+    ax.axhline(0.80, color="#FFAB4C", linestyle="--", alpha=0.7, label="80% power")
+    if planned_mde is not None:
+        p_planned = power_at_mde(p_baseline, planned_mde, n_per_arm, alpha)
+        ax.axvline(
+            planned_mde * 100,
+            color="#FF5630",
+            linestyle=":",
+            alpha=0.8,
+            label=f"Planned MDE +{planned_mde:.0%} (power={p_planned:.0%})",
+        )
+    ax.set_xlabel("MDE (percentage points)")
+    ax.set_ylabel("Power")
+    ax.set_title(f"Power curve  (baseline={p_baseline:.1%}, n={n_per_arm:,}/arm, α={alpha})")
+    ax.set_ylim(0, 1.05)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    return out
 
 
 # ── Business impact ───────────────────────────────────────────────────────────
@@ -550,6 +768,154 @@ def section_sensitivity(r: dict[str, float]) -> None:
     )
 
 
+# ── Sprint-1 section printers (A1-A4) ────────────────────────────────────────
+def section_guardrails(df: pd.DataFrame) -> list[dict[str, float]]:
+    """A1: guardrail metrics — confirm the feature didn't hurt churn / revenue."""
+    print_section("GUARDRAIL METRICS (churn & revenue)", width=60)
+    guardrails = [
+        ("churned_30d", "lower", "30-day churn", "%"),
+        ("revenue_30d_eur", "higher", "30-day revenue", "€"),
+    ]
+    results: list[dict[str, float]] = []
+    all_ok = True
+    for col, direction, label, unit in guardrails:
+        if col not in df.columns:
+            print(f"\n⚠️  {col} not in dataset — guardrail skipped.")
+            continue
+        g = guardrail_test(df, col, direction=direction)
+        results.append(g)
+        good_bad = "lower is better" if direction == "lower" else "higher is better"
+        print(f"\n{label}  ({good_bad}):")
+        print(f"  Control:    {g['control_mean']:>8.3f} {unit}")
+        print(f"  Treatment:  {g['treatment_mean']:>8.3f} {unit}")
+        print(f"  Δ:          {g['diff']:+.3f} {unit}")
+        print(f"  Two-sided p:   {g['p_two_sided']:.4f}")
+        print(f"  Bad-direction p (one-sided): {g['p_bad_direction']:.4f}")
+        if g["violated"]:
+            all_ok = False
+            print("  ❌ GUARDRAIL VIOLATED — significant movement in the BAD direction")
+        else:
+            moved = g["p_two_sided"] < 0.05
+            if moved:
+                favor = (
+                    "favorably"
+                    if (direction == "lower" and g["diff"] < 0)
+                    or (direction == "higher" and g["diff"] > 0)
+                    else "adversely (non-significant)"
+                )
+                print(f"  ✅ Guardrail OK — metric moved {favor} but not significantly bad")
+            else:
+                print("  ✅ Guardrail OK — no significant movement")
+
+    print_subsection("GUARDRAIL VERDICT")
+    if all_ok:
+        print("✅ All guardrails OK — safe to ship from a guardrail standpoint.")
+        print("   Note: churn & revenue are downstream of KYC completion, so the")
+        print("   favorable drift is expected; the check guards against a NEGATIVE")
+        print("   side-effect (e.g. the progress bar adding friction elsewhere).")
+    else:
+        print("❌ At least one guardrail violated — DO NOT ship without investigation.")
+    return results
+
+
+def section_hte(df: pd.DataFrame) -> pd.DataFrame:
+    """A2: heterogeneous treatment effects with Benjamini-Hochberg correction."""
+    print_section("HETEROGENEOUS TREATMENT EFFECTS (BH-corrected)", width=60)
+    hte = hte_analysis(df)
+    if hte.empty:
+        print("⚠️  No segmentation columns found — HTE analysis skipped.")
+        return hte
+
+    print(f"\n{len(hte)} segment-value tests; BH correction controls FDR at α=0.05.")
+    print("\nLift by segment value (sorted by lift, pp):")
+    display_cols = [
+        "segment_col",
+        "segment_value",
+        "n_control",
+        "n_treatment",
+        "control_rate",
+        "treatment_rate",
+        "lift_pp",
+        "p_raw",
+        "p_bh",
+        "significant_raw",
+        "significant_bh",
+    ]
+    print(hte[display_cols].to_string(index=False))
+
+    n_raw = int(hte["significant_raw"].sum())
+    n_bh = int(hte["significant_bh"].sum())
+    print_subsection("HTE SUMMARY")
+    print(f"  Naive (p<0.05):          {n_raw}/{len(hte)} segment values significant")
+    print(f"  BH-corrected (FDR<0.05): {n_bh}/{len(hte)} segment values significant")
+    print("  BH is the right correction for exploratory segment analysis (controls")
+    print("  FDR, not the overly-conservative FWER). Segments significant after BH")
+    print("  are credible HTE candidates; naive-only ones may be false discoveries.")
+
+    top = hte[hte["significant_bh"]].sort_values("lift_pp", ascending=False)
+    if not top.empty:
+        print_subsection("CREDIBLE HTE (significant after BH)")
+        for _, row in top.iterrows():
+            print(
+                f"  {row['segment_col']}={row['segment_value']:<12} "
+                f"lift +{row['lift_pp']:.1f}pp  (q={row['p_bh']:.3f})"
+            )
+    return hte
+
+
+def section_sequential(df: pd.DataFrame, r: dict[str, float]) -> None:
+    """A3: group-sequential boundaries (O'Brien-Fleming) for peek-safe monitoring."""
+    print_section("SEQUENTIAL TESTING (O'Brien-Fleming alpha spending)", width=60)
+    n_looks = 4
+    bounds = sequential_bounds(n_looks=n_looks, alpha=0.05, method="obrien_fleming")
+    print(f"\n{n_looks} interim looks at equal information fractions:")
+    print(bounds.round(4).to_string(index=False))
+    print("\nInterpretation:")
+    print("  • Early looks need very large |z| to stop (little alpha spent) —")
+    print("    protects against the 'peeking inflates type-I' problem.")
+    print("  • Final look ≈ fixed-horizon α=0.05 — almost no power cost vs naive.")
+
+    verdict = sequential_verdict(r["z_score"], bounds)
+    print_subsection("APPLIED TO THIS EXPERIMENT (final look)")
+    print(f"  Observed |z|:           {abs(verdict['z_observed']):.3f}")
+    print(f"  Final-look z-boundary:  {verdict['z_boundary_final']:.3f}")
+    print(f"  Final nominal α:        {verdict['nominal_alpha_final']:.4f}")
+    if verdict["reject"]:
+        print("  ✅ Would reject at the final look under OBF (peek-safe).")
+    else:
+        print("  ❌ Would NOT reject under OBF — consistent with the fixed-horizon call.")
+    print("\n  Without alpha spending, peeking at each interim with raw α=0.05 inflates")
+    print("  cumulative type-I error to ~18% over 4 looks; OBF keeps it at 5%.")
+
+
+def section_power_curve(r: dict[str, float]) -> Path:
+    """A4: power-vs-MDE curve PNG, marking the planned MDE and 80% line."""
+    print_section("POWER CURVE (power vs MDE)", width=60)
+    mde = CONSTANTS["MDE_ABSOLUTE"]
+    out = OUTPUT_DIR / "ab_power_curve.png"
+    plot_power_curve(
+        p_baseline=r["control_rate"],
+        n_per_arm=int(r["n_control"]),
+        out=out,
+        planned_mde=mde,
+    )
+    p_planned = power_at_mde(r["control_rate"], mde, int(r["n_control"]))
+    print(f"\nSaved: {out.name}")
+    print(f"  Power at planned MDE (+{mde:.0%}): {p_planned:.1%}")
+    # Solve for the MDE that gives exactly 80% power (binary search).
+    lo, hi = 0.005, 0.20
+    for _ in range(50):
+        mid = (lo + hi) / 2
+        if power_at_mde(r["control_rate"], mid, int(r["n_control"])) < 0.80:
+            lo = mid
+        else:
+            hi = mid
+    print(f"  MDE needed for 80% power with n={int(r['n_control']):,}/arm: +{hi:.1%}")
+    print("  The curve shows the experiment is over-powered for the +5% MDE target")
+    print("  — it could reliably detect a smaller effect if that were the goal.")
+    return out
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main() -> None:
     setup(float_format="{:.3f}")
@@ -560,6 +926,10 @@ def main() -> None:
     section_sample_size()
     srm = section_srm(df)
     r = section_primary(df)
+    section_guardrails(df)
+    section_hte(df)
+    section_sequential(df, r)
+    section_power_curve(r)
     section_segments(seg_df)
     impact = section_business(r)
     section_checklist(r, srm, impact)

@@ -103,3 +103,105 @@ def test_aa_test_type1_rate_in_range() -> None:
     aa = ab.aa_test(df, n_iter=200, seed=42)
     assert 0.0 <= aa["type1_rate"] <= 1.0
     assert aa["n_iter"] == 200
+
+
+# ── Sprint 1: A1-A4 ──────────────────────────────────────────────────────────
+def _make_guardrail_df(
+    n: int = 2000, treat_churn_effect: float = 0.0, seed: int = 0
+) -> pd.DataFrame:
+    """Build a df with churn + revenue guardrails. `treat_churn_effect` > 0
+    simulates a guardrail violation (treatment increases churn)."""
+    rng = np.random.default_rng(seed)
+    group = np.where(rng.random(n) < 0.5, "treatment", "control")
+    kyc = (rng.random(n) < 0.6).astype(int)
+    churn_p = np.where(kyc == 1, 0.06, 0.30)
+    churn_p[group == "treatment"] += treat_churn_effect
+    churned = (rng.random(n) < churn_p).astype(int)
+    revenue = np.where(kyc == 1, 18.0, 3.5) + rng.normal(0, 5, n)
+    return pd.DataFrame(
+        {
+            "group": group,
+            "kyc_completed": kyc,
+            "churned_30d": churned,
+            "revenue_30d_eur": np.clip(revenue, 0, None),
+        }
+    )
+
+
+def test_guardrail_test_clean_when_no_effect() -> None:
+    df = _make_guardrail_df(treat_churn_effect=0.0)
+    g = ab.guardrail_test(df, "churned_30d", direction="lower")
+    assert g["violated"] is False
+    # Revenue also clean.
+    gr = ab.guardrail_test(df, "revenue_30d_eur", direction="higher")
+    assert gr["violated"] is False
+
+
+def test_guardrail_test_detects_violation() -> None:
+    df = _make_guardrail_df(treat_churn_effect=0.10, seed=1)
+    g = ab.guardrail_test(df, "churned_30d", direction="lower")
+    assert g["violated"] is True
+    assert g["p_bad_direction"] < 0.05
+    assert g["diff"] > 0  # treatment churn higher
+
+
+def test_hte_analysis_returns_bh_corrected_table() -> None:
+    df = _make_experiment_df(n_control=2000, n_treatment=2000)
+    # Add segmentation columns.
+    rng = np.random.default_rng(2)
+    df["age_group"] = rng.choice(["18-24", "25-34", "35-44", "45+"], size=len(df))
+    df["device"] = rng.choice(["android", "ios", "web"], size=len(df))
+    df["channel"] = rng.choice(["app_store", "google_play", "website", "referral"], size=len(df))
+    hte = ab.hte_analysis(df)
+    assert len(hte) == 4 + 3 + 4  # 11 segment values
+    assert {"p_bh", "significant_bh", "lift_pp"} <= set(hte.columns)
+    # BH-adjusted p must be >= raw p (adjustment inflates p-values).
+    assert (hte["p_bh"] >= hte["p_raw"] - 1e-9).all()
+    # Lift in pp = (treatment - control) * 100.
+    assert hte["lift_pp"].between(-100, 100).all()
+
+
+def test_bh_adjusted_pvals_monotone_and_bounded() -> None:
+    pvals = [0.001, 0.02, 0.03, 0.5, 0.9]
+    q = ab._bh_adjusted_pvals(pvals)
+    assert all(0.0 <= x <= 1.0 for x in q)
+    # Sorted q-values must be monotone non-decreasing.
+    order = np.argsort(pvals)
+    q_sorted = np.array(q)[order]
+    assert all(q_sorted[i] <= q_sorted[i + 1] + 1e-9 for i in range(len(q_sorted) - 1))
+
+
+def test_sequential_bounds_obf_decreasing() -> None:
+    bounds = ab.sequential_bounds(n_looks=4, method="obrien_fleming")
+    assert len(bounds) == 4
+    # OBF boundaries decrease as info accumulates (early looks hardest).
+    z = bounds["z_boundary"].values
+    assert all(z[i] > z[i + 1] for i in range(len(z) - 1))
+    # Nominal alpha increases toward the final look.
+    a = bounds["nominal_alpha"].values
+    assert a[-1] > a[0]
+
+
+def test_sequential_bounds_rejects_large_z() -> None:
+    bounds = ab.sequential_bounds(n_looks=4, method="obrien_fleming")
+    verdict = ab.sequential_verdict(5.0, bounds)
+    assert verdict["reject"] is True
+    verdict_neg = ab.sequential_verdict(1.0, bounds)
+    assert verdict_neg["reject"] is False
+
+
+def test_power_at_mde_increases_with_mde_and_n() -> None:
+    p1 = ab.power_at_mde(0.5, 0.03, n_per_arm=1000)
+    p2 = ab.power_at_mde(0.5, 0.08, n_per_arm=1000)
+    assert p2 > p1  # bigger effect → more power
+    p3 = ab.power_at_mde(0.5, 0.05, n_per_arm=5000)
+    assert p3 > ab.power_at_mde(0.5, 0.05, n_per_arm=500)  # more n → more power
+    assert 0.0 <= p1 <= 1.0
+
+
+def test_plot_power_curve_writes_png(tmp_path) -> None:
+    out = tmp_path / "power.png"
+    path = ab.plot_power_curve(0.5, 5000, out, planned_mde=0.05)
+    assert path == out
+    assert out.exists()
+    assert out.stat().st_size > 1000

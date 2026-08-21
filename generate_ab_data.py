@@ -92,6 +92,21 @@ def generate_users(n: int, group: str) -> pd.DataFrame:
     # NOT with treatment assignment (CUPED assumption). Adds noise so theta != 1.
     pre_kyc_rate = _clip(control_p + RNG.normal(0, 0.08, size=n))
 
+    # Guardrail metrics — MUST be unaffected by treatment (the whole point of a
+    # guardrail is to confirm the feature didn't break something outside the
+    # primary metric). They depend on kyc_completed (completers churn less and
+    # generate more revenue) but NOT on `group`, so the guardrail t-test should
+    # land non-significant. This is what a clean guardrail looks like.
+    churn_p = np.where(kyc_completed == 1, 0.06, 0.34) + RNG.normal(0, 0.02, size=n)
+    churned_30d = (RNG.random(n) < _clip(churn_p, 0.02, 0.6)).astype(int)
+    # 30-day revenue: completers transact more. Lognormal-ish, non-negative.
+    rev_base = np.where(kyc_completed == 1, 18.0, 3.5)
+    revenue_30d_eur = np.clip(
+        rev_base + RNG.normal(0, 6.0, size=n) * np.where(kyc_completed == 1, 1.0, 0.6),
+        0.0,
+        None,
+    )
+
     return pd.DataFrame(
         {
             "customer_id": np.arange(n) + (0 if group == "control" else N_PER_ARM),
@@ -101,6 +116,8 @@ def generate_users(n: int, group: str) -> pd.DataFrame:
             "channel": channel,
             "pre_kyc_rate": pre_kyc_rate.round(4),
             "kyc_completed": kyc_completed,
+            "churned_30d": churned_30d,
+            "revenue_30d_eur": revenue_30d_eur.round(2),
         }
     )
 

@@ -109,3 +109,79 @@ def test_funnel_summary_table_shape() -> None:
     table = vf.funnel_summary_table(metrics)
     assert list(table.columns) == ["Step", "Users", "Overall Conv %", "Step Conv %", "Drop-off"]
     assert len(table) == len(vf.FUNNEL_LABELS)
+
+
+# ── Sprint 1: F1-F3 ──────────────────────────────────────────────────────────
+def _make_segmented_funnel_df() -> pd.DataFrame:
+    """Two channels with very different KYC completion to exercise step tests."""
+    rng = np.random.default_rng(0)
+    n = 400
+    channel = np.where(rng.random(n) < 0.5, "referral", "paid_social")
+    # Referral: high completion; paid_social: low.
+    p_complete = np.where(channel == "referral", 0.85, 0.40)
+    kyc_complete = (rng.random(n) < p_complete).astype(int)
+    # Everyone reached kyc_start.
+    kyc_start = np.ones(n, dtype=int)
+    registration = np.ones(n, dtype=int)
+    app_install = np.ones(n, dtype=int)
+    card_ordered = (kyc_complete & (rng.random(n) < 0.8)).astype(int)
+    first_tx = (card_ordered & (rng.random(n) < 0.7)).astype(int)
+    return pd.DataFrame(
+        {
+            "app_install": app_install,
+            "registration": registration,
+            "kyc_start": kyc_start,
+            "kyc_complete": kyc_complete,
+            "card_ordered": card_ordered,
+            "first_tx": first_tx,
+            "channel": channel,
+            "device": ["ios"] * n,
+            "age_group": ["25-34"] * n,
+        }
+    )
+
+
+def test_step_segment_tests_detects_channel_difference() -> None:
+    df = _make_segmented_funnel_df()
+    results = vf.step_segment_tests(df, "channel")
+    # 5 transitions, each testable.
+    assert len(results) == 5
+    # KYC Start → KYC Complete should be strongly significant (85% vs 40%).
+    kyc_test = next(r for r in results if "KYC Start → KYC Complete" in r["transition"])
+    assert kyc_test["p_value"] < 0.001
+    rates = kyc_test["rates_by_segment"]
+    assert rates["referral"] > rates["paid_social"]
+
+
+def test_step_segment_tests_uniform_segment_non_significant() -> None:
+    df = _make_funnel_df()  # single channel "referral" everywhere
+    # Only one segment value → chi2 needs ≥2 columns → returns no tests for that col.
+    results = vf.step_segment_tests(df, "channel")
+    assert results == []
+
+
+def test_holm_correct() -> None:
+    # 3 p-values: 0.01, 0.02, 0.5; Holm at α=0.05 → reject 0.01 and 0.02.
+    rej = vf.holm_correct([0.01, 0.02, 0.5])
+    assert rej == [True, True, False]
+
+
+def test_time_to_convert_runs_on_committed_data() -> None:
+    df = vf.load_data()
+    if "install_date" not in df.columns:
+        pytest.skip("install_date column missing — run generate_funnel_data.py")
+    summary = vf.time_to_convert(df)
+    assert "median_hours" in summary.columns
+    assert len(summary) == df["channel"].nunique()
+    # Referral should be fastest (generator design).
+    assert summary.index[0] == "referral"
+    assert (summary["median_hours"] > 0).all()
+
+
+def test_plot_funnel_heatmap_writes_png(tmp_path) -> None:
+    df = _make_segmented_funnel_df()
+    out = tmp_path / "heatmap.png"
+    path = vf.plot_funnel_heatmap(df, out)
+    assert path == out
+    assert out.exists()
+    assert out.stat().st_size > 1000

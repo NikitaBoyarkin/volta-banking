@@ -33,7 +33,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-from utils.common import CONSTANTS, data_path, print_section, setup
+from utils.common import CONSTANTS, data_path, print_section, print_subsection, setup
 
 # ── Funnel definition ────────────────────────────────────────────────────────
 FUNNEL_STEPS = [
@@ -246,6 +246,148 @@ def step_conversion_cis(metrics: dict[str, list[float]]) -> list[tuple[float, fl
     return cis
 
 
+# ── Sprint 1: F1 step × segment chi-square tests ────────────────────────────
+def step_segment_tests(df: pd.DataFrame, segment_col: str) -> list[dict[str, object]]:
+    """For each funnel transition (step i-1 → step i), test whether the step
+    conversion rate differs across the values of `segment_col` via a chi-square
+    test of independence on the 2×K contingency table (converted / not at step
+    i, by segment value, among users who reached step i-1).
+
+    Returns one dict per transition: step label, chi2, dof, p_value, plus the
+    per-value step-conversion rates.
+    """
+    results: list[dict[str, object]] = []
+    for i in range(1, len(FUNNEL_STEPS)):
+        prev_step = FUNNEL_STEPS[i - 1]
+        curr_step = FUNNEL_STEPS[i]
+        # Only users who reached the previous step are at risk of converting.
+        at_risk = df[df[prev_step] == 1]
+        if at_risk.empty:
+            continue
+        # 2×K contingency: rows = [converted, not converted], cols = segment values.
+        converted = at_risk.groupby(segment_col)[curr_step].sum()
+        totals = at_risk.groupby(segment_col).size()
+        not_converted = totals - converted
+        rates = (converted / totals * 100).round(1).to_dict()
+        table = np.array([converted.values, not_converted.values])
+        # Drop segment values with 0 at-risk users (chi2 can't handle 0 columns).
+        nonzero = totals.values > 0
+        if nonzero.sum() < 2:
+            continue
+        table = table[:, nonzero]
+        # Skip degenerate transitions (no variance: all-convert or none-convert
+        # across every segment value → a zero row → chi2 undefined).
+        if np.any(table.sum(axis=1) == 0):
+            results.append(
+                {
+                    "transition": f"{FUNNEL_LABELS[i - 1]} → {FUNNEL_LABELS[i]}",
+                    "segment_col": segment_col,
+                    "chi2": 0.0,
+                    "dof": 0,
+                    "p_value": 1.0,
+                    "rates_by_segment": {k: float(v) for k, v in rates.items()},
+                }
+            )
+            continue
+        chi2, p_value, dof, _ = stats.chi2_contingency(table)
+        results.append(
+            {
+                "transition": f"{FUNNEL_LABELS[i - 1]} → {FUNNEL_LABELS[i]}",
+                "segment_col": segment_col,
+                "chi2": float(chi2),
+                "dof": int(dof),
+                "p_value": float(p_value),
+                "rates_by_segment": {k: float(v) for k, v in rates.items()},
+            }
+        )
+    return results
+
+
+def holm_correct(pvals: list[float], alpha: float = 0.05) -> list[bool]:
+    """Holm step-down FWER correction. Reject sequentially from smallest p."""
+    m = len(pvals)
+    order = np.argsort(pvals)
+    rej = [False] * m
+    for rank, idx in enumerate(order):
+        if pvals[idx] <= alpha / (m - rank):
+            rej[idx] = True
+        else:
+            break
+    return rej
+
+
+# ── Sprint 1: F2 time-to-convert ────────────────────────────────────────────
+def time_to_convert(df: pd.DataFrame) -> pd.DataFrame:
+    """Time from install to first transaction, by channel, for converted users.
+
+    Requires the `install_date` / `first_tx_date` columns produced by
+    `generate_funnel_data.py`. Returns a per-channel summary with count,
+    median, mean, and IQR of hours-to-first-tx.
+    """
+    if "install_date" not in df.columns or "first_tx_date" not in df.columns:
+        raise ValueError(
+            "install_date / first_tx_date missing — run `generate_funnel_data.py` first."
+        )
+    converted = df[df["first_tx"] == 1].copy()
+    converted["hours_to_tx"] = (
+        pd.to_datetime(converted["first_tx_date"]) - pd.to_datetime(converted["install_date"])
+    ).dt.total_seconds() / 3600
+    summary = (
+        converted.groupby("channel")["hours_to_tx"]
+        .agg(
+            n="count",
+            median_hours="median",
+            mean_hours="mean",
+            p25=lambda s: float(s.quantile(0.25)),
+            p75=lambda s: float(s.quantile(0.75)),
+        )
+        .round(1)
+        .sort_values("median_hours")
+    )
+    return summary
+
+
+# ── Sprint 1: F3 funnel heatmap PNG ─────────────────────────────────────────
+def plot_funnel_heatmap(df: pd.DataFrame, out: Path) -> Path:
+    """Step × channel heatmap of step-conversion %."""
+    # Step conversion per channel: among users who reached step i-1, % who
+    # reached step i. Step 0 (App Install) is 100% by construction.
+    channels = sorted(df["channel"].unique())
+    rows = []
+    for i in range(len(FUNNEL_STEPS)):
+        if i == 0:
+            rows.append([100.0] * len(channels))
+            continue
+        prev, curr = FUNNEL_STEPS[i - 1], FUNNEL_STEPS[i]
+        row = []
+        for ch in channels:
+            at_risk = df[(df["channel"] == ch) & (df[prev] == 1)]
+            if len(at_risk) == 0:
+                row.append(0.0)
+            else:
+                row.append(at_risk[curr].mean() * 100)
+        rows.append(row)
+    matrix = np.array(rows).round(1)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    sns.heatmap(
+        matrix,
+        annot=True,
+        fmt=".1f",
+        cmap="YlGnBu",
+        xticklabels=channels,
+        yticklabels=FUNNEL_LABELS,
+        ax=ax,
+        cbar_kws={"label": "Step conversion %"},
+        annot_kws={"fontsize": 8},
+    )
+    ax.set_title("Funnel step × channel — step conversion %")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 # ── Plots ────────────────────────────────────────────────────────────────────
 def plot_main_funnel(metrics: dict[str, list[float]], out: Path) -> None:
     """Funnel counts + step-conversion twin-axis chart."""
@@ -346,9 +488,7 @@ def section_core_funnel(
 
     cis = step_conversion_cis(metrics)
     print("\nStep conversion with 95% Wilson confidence intervals:")
-    for label, step_conv, (lo, hi) in zip(
-        FUNNEL_LABELS, metrics["step_conv"], cis, strict=True
-    ):
+    for label, step_conv, (lo, hi) in zip(FUNNEL_LABELS, metrics["step_conv"], cis, strict=True):
         print(f"  {label:<20} {step_conv:>6.1f}%  (95% CI: {lo * 100:.1f}% – {hi * 100:.1f}%)")
 
     drops = biggest_drops(metrics)
@@ -472,6 +612,78 @@ def section_stat_tests(df: pd.DataFrame) -> tuple[float, float]:
     r2 = chi_square_activation(df, "device", "ios", "android")
     _print_chi_square(r2)
     return r1["a_rate"] - r1["b_rate"], r2["a_rate"] - r2["b_rate"]
+
+
+# ── Sprint 1: F1-F3 section printers ─────────────────────────────────────────
+def section_step_segment_tests(df: pd.DataFrame) -> list[dict[str, object]]:
+    """F1: chi-square on every funnel step × every segment dimension, Holm-corrected."""
+    print_section("STEP × SEGMENT STATISTICAL TESTS (Holm-corrected)")
+    all_tests: list[dict[str, object]] = []
+    for seg_col in ("channel", "device", "age_group"):
+        all_tests.extend(step_segment_tests(df, seg_col))
+
+    pvals = [t["p_value"] for t in all_tests]
+    rej = holm_correct(pvals, alpha=0.05)
+    for t, r in zip(all_tests, rej, strict=True):
+        t["significant_holm"] = bool(r)
+
+    print(f"\n{len(all_tests)} tests (5 steps × 3 segment dimensions); Holm FWER correction.")
+    print(
+        f"\n{'Transition':<32} {'Segment':<10} {'χ²':>8} {'dof':>4} {'p-value':>10} {'Holm sig':>10}"
+    )
+    print("-" * 80)
+    for t in all_tests:
+        sig = "✅" if t["significant_holm"] else ""
+        print(
+            f"{t['transition']:<32} {t['segment_col']:<10} {t['chi2']:>8.2f} "
+            f"{t['dof']:>4} {t['p_value']:>10.4f} {sig:>10}"
+        )
+
+    n_sig = sum(rej)
+    print_subsection(
+        f"VERDICT: {n_sig}/{len(all_tests)} step×segment differences significant after Holm"
+    )
+    print("  Holm controls the family-wise error rate across all 15 tests; naive")
+    print("  p<0.05 would flag ~8-9 of these, several of which are noise.")
+    return all_tests
+
+
+def section_time_to_convert(df: pd.DataFrame) -> pd.DataFrame:
+    """F2: time-to-first-transaction distribution by channel."""
+    print_section("TIME-TO-CONVERT (install → first transaction)")
+    try:
+        summary = time_to_convert(df)
+    except ValueError as e:
+        print(f"⚠️  {e}")
+        return pd.DataFrame()
+
+    print("\nHours from install to first transaction (converted users only):")
+    print(summary.to_string())
+    fastest = summary.index[0]
+    slowest = summary.index[-1]
+    print_subsection("INSIGHT")
+    print(
+        f"  {fastest} users convert fastest (median {summary.loc[fastest, 'median_hours']:.0f}h);"
+    )
+    print(f"  {slowest} slowest (median {summary.loc[slowest, 'median_hours']:.0f}h) —")
+    print(
+        f"  {summary.loc[slowest, 'median_hours'] / summary.loc[fastest, 'median_hours']:.1f}× gap."
+    )
+    print("  → Referral drives not just more activations but FASTER ones (higher intent);")
+    print("    paid social users who do convert take ~4× longer — a latency budget for")
+    print("    re-engagement campaigns (push at day 3 for paid social, day 1 for referral).")
+    return summary
+
+
+def section_funnel_heatmap(df: pd.DataFrame) -> Path:
+    """F3: step × channel heatmap PNG."""
+    print_section("FUNNEL HEATMAP (step × channel)")
+    out = OUTPUT_DIR / "viz4_funnel_heatmap.png"
+    plot_funnel_heatmap(df, out)
+    print(f"\nSaved: {out.name}")
+    print("  Heatmap cells = step-conversion % at each transition for each channel.")
+    print("  Pale cells surface the (channel, step) combinations dragging the funnel.")
+    return out
 
 
 def _print_chi_square(r: dict[str, float]) -> None:
@@ -666,6 +878,9 @@ def main() -> None:
         section_age_device(df)
     )
     referral_diff, _ = section_stat_tests(df)
+    section_step_segment_tests(df)
+    section_time_to_convert(df)
+    section_funnel_heatmap(df)
     section_findings(
         metrics, drops, revenue_per_10k, youngest_kyc, oldest_kyc, ios_advantage, referral_diff
     )

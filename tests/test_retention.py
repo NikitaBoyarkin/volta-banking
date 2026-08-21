@@ -62,3 +62,67 @@ def test_section_stat_test_detects_improvement() -> None:
     assert result["cohens_d"] > 0
     assert result["n_pre"] == 8
     assert result["n_post"] == 4
+
+
+# ── Sprint 1: R1-R3 ──────────────────────────────────────────────────────────
+def _make_full_retention_df() -> pd.DataFrame:
+    """12 cohorts × 12 months with a pre/post step-change."""
+    pre_curve = [1.0, 0.52, 0.38, 0.31, 0.26, 0.23, 0.21, 0.19, 0.18, 0.17, 0.16, 0.15]
+    post_curve = [1.0, 0.64, 0.49, 0.41, 0.36, 0.33, 0.31, 0.29, 0.28, 0.27, 0.26, 0.25]
+    rows = []
+    for i in range(12):
+        cohort = f"2024-{i + 1:02d}"
+        curve = post_curve if cohort >= "2024-09" else pre_curve
+        row = {"cohort": cohort, "cohort_size": 5000}
+        for m, r in enumerate(curve):
+            row[f"month_{m}"] = r
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("cohort")
+
+
+def test_churn_curve_complements_retention() -> None:
+    df = _make_full_retention_df()
+    churn = vr.churn_curve(df)
+    assert len(churn) == 12
+    # Churn = 1 - retention; M0 retention is 1.0 → churn 0.
+    m0 = churn.iloc[0]
+    assert m0["pre_churn"] == 0.0
+    assert m0["post_churn"] == 0.0
+    # Post-fix churn should be lower than pre-fix (retention improved).
+    m1 = churn[churn["month"] == "M1"].iloc[0]
+    assert m1["post_churn"] < m1["pre_churn"]
+
+
+def test_ltv_bootstrap_ci_post_above_pre() -> None:
+    df = _make_full_retention_df()
+    arpu = 3.2
+    pre_lo, pre_hi = vr.ltv_bootstrap_ci(df, arpu, side="pre")
+    post_lo, post_hi = vr.ltv_bootstrap_ci(df, arpu, side="post")
+    assert pre_lo > 0 and post_lo > 0
+    # Post-fix LTV CI should sit above pre-fix (retention improved).
+    assert post_lo > pre_lo
+
+
+def test_ltv_bootstrap_ci_empty_side_returns_nan() -> None:
+    df = _make_full_retention_df()
+    # No cohorts before 2023 → empty pre side.
+    df_only_post = df[df.index >= "2024-09"]
+    lo, hi = vr.ltv_bootstrap_ci(df_only_post, 3.2, side="pre")
+    assert np.isnan(lo) and np.isnan(hi)
+
+
+def test_ltv_bootstrap_ci_premium_multiplier_scales_ltv() -> None:
+    df = _make_full_retention_df()
+    lo_free, hi_free = vr.ltv_bootstrap_ci(df, 3.2, side="pre", premium_multiplier=1.0)
+    lo_prem, hi_prem = vr.ltv_bootstrap_ci(df, 3.2, side="pre", premium_multiplier=2.0)
+    # 2× retention multiplier → ~2× LTV.
+    assert lo_prem > 1.8 * lo_free
+
+
+def test_plot_cohort_heatmap_writes_png(tmp_path) -> None:
+    df = _make_full_retention_df()
+    out = tmp_path / "cohort.png"
+    path = vr.plot_cohort_heatmap(df, out)
+    assert path == out
+    assert out.exists()
+    assert out.stat().st_size > 1000
