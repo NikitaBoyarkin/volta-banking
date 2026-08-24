@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A product analytics portfolio for a fictional fintech neobank ("Volta"). Originally four sequential Python analysis scripts, now expanding to nine scripts covering the full analytics lifecycle: funnel → experiment → retention → segmentation → churn → RFM → CLV → attribution → anomaly.
+A product analytics portfolio for a fictional fintech neobank ("Volta"). Nine Python scripts covering the full analytics lifecycle: funnel → experiment → retention → segmentation → churn → RFM → CLV → attribution → anomaly.
 
 ## Core Value
 
@@ -12,25 +12,24 @@ Employers can read and run each script independently to see end-to-end analytica
 
 ### Validated
 
-- ✓ **FUNNEL-01**: Onboarding funnel analysis — `volta_funnel_analysis.py` (existing)
-- ✓ **ABTEST-01**: KYC progress bar A/B test analysis — `volta_ab_testing.py` (existing)
-- ✓ **RETAIN-01**: Cohort retention and LTV projection — `volta_retention_analysis.py` (existing)
-- ✓ **SEGMENT-01**: K-means clustering and monetization strategy — `volta_segmentation.py` (existing)
+- ✓ **FUNNEL-01**: Onboarding funnel analysis — `volta_funnel_analysis.py`
+- ✓ **ABTEST-01**: KYC progress bar A/B test analysis — `volta_ab_testing.py`
+- ✓ **RETAIN-01**: Cohort retention and LTV projection — `volta_retention_analysis.py`
+- ✓ **SEGMENT-01**: K-means clustering and monetization strategy — `volta_segmentation.py`
+- ✓ **CHURN-01**: Churn prediction with train/test split, feature importance, and model comparison (Logistic Regression vs Random Forest) — `volta_churn_prediction.py`
+- ✓ **RFM-01**: RFM (Recency, Frequency, Monetary) analysis with scoring tiers and customer lifecycle segmentation — `volta_rfm_analysis.py`
+- ✓ **CLV-01**: Customer Lifetime Value modeling using historical, predictive (retention-curve), and probabilistic (Gamma-Gamma) approaches — `volta_clv_modeling.py`
+- ✓ **ATTR-01**: Marketing attribution covering first-touch, last-touch, linear, and data-driven (Shapley value) models — `volta_attribution.py`
+- ✓ **ANOM-01**: Anomaly detection using statistical (Z-score, IQR) and ML (Isolation Forest) methods — `volta_anomaly_detection.py`
 
 ### Active
 
-- [ ] **CHURN-01**: Churn prediction with train/test split, feature importance, and model comparison (Random Forest vs XGBoost vs Logistic Regression)
-- [ ] **RFM-01**: RFM (Recency, Frequency, Monetary) analysis with scoring tiers and customer lifecycle segmentation
-- [ ] **CLV-01**: Customer Lifetime Value modeling using historical, predictive, and probabilistic (BG/NBD + Gamma-Gamma) approaches
-- [ ] **ATTR-01**: Marketing attribution analysis covering last-touch, first-touch, linear, and data-driven (Shapley value) models
-- [ ] **ANOM-01**: Anomaly detection across transaction volume and user activity using statistical (Z-score, IQR) and ML (Isolation Forest) methods
+None — all nine phases are complete.
 
 ### Out of Scope
 
-- Interactive dashboard or web app — portfolio is script-based for readability
+- Interactive dashboard or web app — portfolio is script/notebook-based for readability (executed `.ipynb` notebooks provided instead)
 - Real data integration — synthetic data only, local execution
-- CI/CD or test suite — not needed for a portfolio/demo repo
-- Shared utilities / package structure — each script remains self-contained
 
 ## Context
 
@@ -50,10 +49,12 @@ Employers can read and run each script independently to see end-to-end analytica
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Keep single-file pattern | Portfolio readability — each script tells a complete story | — Pending |
-| Fresh synthetic data per script | Independence, no hidden dependencies between scripts | — Pending |
-| Match existing complexity | Consistent employer experience across all nine scripts | — Pending |
-| No shared utilities | Each script must be runnable after a single `git clone` | — Pending |
+| Keep single-file pattern | Portfolio readability — each script tells a complete story | ✓ Done |
+| Fresh synthetic data per script | Independence, no hidden dependencies between scripts | ✓ Done |
+| Match existing complexity | Consistent employer experience across all nine scripts | ✓ Done |
+| Shared utilities | `utils/common.py` centralizes setup/constants/paths | ✓ Done |
+| Separate seeded generators | Reproducible `data/*.csv` + `make data` | ✓ Done |
+| Engineering quality | ruff + mypy (new code) + pytest-cov (97%) + pre-commit + CI | ✓ Done |
 
 ## Evolution
 
@@ -73,4 +74,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-01 after initialization*
+*Last updated: 2026-08-24 — all nine phases validated; engineering + presentation sprints complete*

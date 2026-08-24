@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Volta Neobank — Retention & Cohort Analysis
 
@@ -29,9 +30,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from utils.common import CONSTANTS, data_path, print_section, print_subsection, setup
+from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
 
-OUTPUT_DIR = Path(__file__).resolve().parent
 FIX_CUTOFF = "2024-09"  # cohorts >= this date are "post-fix"
 
 

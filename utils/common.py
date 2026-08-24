@@ -14,6 +14,7 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
+OUTPUT_DIR = REPO_ROOT / "outputs"
 
 
 def setup(
@@ -53,13 +54,13 @@ def print_subsection(title: str, width: int = 70) -> None:
 
 
 def data_path(filename: str) -> Path:
-    """Resolve a data file path. Files in repo root take precedence; falls back
-    to ``data/`` so generated CSVs (repo root) and the committed funnel CSV
-    (data/) both resolve without per-script hardcoding."""
-    root = REPO_ROOT / filename
-    if root.exists():
-        return root
-    return DATA_DIR / filename
+    """Resolve a data file path. Generated CSVs live in ``data/``; this prefers
+    that canonical location and falls back to the repo root for backward
+    compatibility with older layouts."""
+    data = DATA_DIR / filename
+    if data.exists():
+        return data
+    return REPO_ROOT / filename
 
 
 # ── Business constants ──────────────────────────────────────────────────────

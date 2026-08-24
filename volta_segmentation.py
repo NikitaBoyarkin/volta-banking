@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Volta Neobank — User Segmentation & Monetization Strategy
 
@@ -31,9 +32,8 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from utils.common import data_path, print_section, print_subsection, setup
+from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
 
-OUTPUT_DIR = Path(__file__).resolve().parent
 KMEANS_SEED = 42
 
 # Behavioral features used for clustering. `monthly_revenue` is intentionally

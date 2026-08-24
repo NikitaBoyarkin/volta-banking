@@ -36,6 +36,8 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
+from utils.common import DATA_DIR
+
 SEED = 42
 RNG = np.random.default_rng(SEED)
 
@@ -131,11 +133,14 @@ def _verify_k4_elbow(df: pd.DataFrame) -> None:
     from sklearn.metrics import silhouette_score
 
     X = StandardScaler().fit_transform(df[CLUSTERING_FEATURES])
+    # silhouette_score is O(n^2); subsample to 10k (matches volta_segmentation.py)
+    sample_idx = np.random.default_rng(SEED).choice(len(X), size=10_000, replace=False)
+    X_sample = X[sample_idx]
     print("\nK-selection diagnostics (generator sanity check):")
     print(f"{'K':<4}{'Inertia':<14}{'Silhouette':<12}")
     for k in range(2, 9):
         km = KMeans(n_clusters=k, random_state=SEED, n_init=10).fit(X)
-        sil = silhouette_score(X, km.labels_)
+        sil = silhouette_score(X_sample, km.labels_[sample_idx])
         print(f"{k:<4}{km.inertia_:<14.1f}{sil:<12.3f}")
 
 
@@ -144,8 +149,8 @@ def main() -> None:
     profiles = compute_segment_profiles(df)
 
     features = df.drop(columns=["_true_segment", "_is_premium"])
-    features.to_csv("volta_users_features.csv", index=False)
-    profiles.to_csv("segment_profiles.csv")
+    features.to_csv(DATA_DIR / "volta_users_features.csv", index=False)
+    profiles.to_csv(DATA_DIR / "segment_profiles.csv")
 
     print(f"Generated {len(features)} users across {len(profiles)} segments")
     print("Wrote: volta_users_features.csv, segment_profiles.csv")

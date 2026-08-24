@@ -139,7 +139,7 @@ def _add_sheet(wb: Workbook, df: pd.DataFrame, sheet_name: str, is_summary: bool
                 cell.fill = PatternFill(start_color=COLOR_GRAY, fill_type="solid")
 
             # Number formatting
-            if isinstance(value, (int, float)) and r_idx > 1:
+            if isinstance(value, int | float) and r_idx > 1:
                 if abs(value) >= 1000000:
                     cell.number_format = '$#,##0,,"M"'
                 elif abs(value) >= 1000:

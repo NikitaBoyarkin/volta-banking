@@ -25,6 +25,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from utils.common import DATA_DIR
+
 SEED = 42
 RNG = np.random.default_rng(SEED)
 
@@ -97,7 +99,7 @@ def generate_cohort_matrix() -> pd.DataFrame:
 
 def main() -> None:
     df = generate_cohort_matrix()
-    out_path = "cohort_retention_matrix.csv"
+    out_path = DATA_DIR / "cohort_retention_matrix.csv"
     df.to_csv(out_path)
 
     pre = df.loc[df.index < FIX_CUTOFF, "month_3"]

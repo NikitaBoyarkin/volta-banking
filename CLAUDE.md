@@ -15,6 +15,12 @@ educational/demonstrative. Each script picks up where the previous one ended.
 - **Package manager:** `uv` (preferred). Keep `uv.lock` in sync with `pyproject.toml`.
 - **Linter/formatter:** `ruff` (dev dependency; configured in `pyproject.toml`:
   `select = ["E","W","F","I","B","C4","UP"]`, `ignore = ["E501"]`, excludes `*.ipynb`).
+- **Type checking:** `mypy` (config in `pyproject.toml`; the four legacy scripts are
+  marked `# mypy: ignore-errors`, new Sprint 3+ code is typed and checked).
+- **Coverage:** `pytest-cov` (default `addopts` in `pyproject.toml`; ~96% on active
+  code). Legacy `utils/pdf_processor.py` + `utils/report_generator.py` are omitted.
+- **Pre-commit:** `.pre-commit-config.yaml` runs ruff + pytest before commits
+  (`uv run pre-commit install` once).
 
 ## Common Commands
 
@@ -33,18 +39,30 @@ uv run python volta_ab_testing.py
 uv run python volta_retention_analysis.py
 uv run python volta_segmentation.py
 
-# Lint / format
+# Lint / format / type
 uv run ruff check .
 uv run ruff format .
+uv run mypy
+
+# Tests (with coverage) — or the Makefile shortcuts below
+uv run pytest
+
+# Makefile shortcuts
+make data     # regenerate all synthetic datasets
+make test     # uv run pytest
+make lint     # uv run ruff check .
+make format   # uv run ruff format .
+make type     # uv run mypy
+make all      # data + test + lint + type
 ```
 
 ## High-Level Architecture
 
-### Four-Project Portfolio
+### Nine-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
-analysis. All four import shared helpers from `utils/common.py`.
+analysis. All import shared helpers from `utils/common.py`.
 
 1. **`volta_funnel_analysis.py`** — onboarding funnel. Loads
    `data/volta_funnel_data.csv` (committed; augmented with `install_date` /
@@ -85,15 +103,30 @@ analysis. All four import shared helpers from `utils/common.py`.
    z-score profiles vs global mean (`centroid_zscores`,
    `section_centroid_profiles`); S3 bootstrap segment stability via adjusted
    Rand index (`segment_stability`, `segment_stability_section`).
+5. **`volta_churn_prediction.py`** — LR vs Random Forest, ROC-AUC + feature
+   importance. `prep_features` one-hot encodes channel; `fit_models`/`evaluate`
+   compare models; RF beats LR by ≥0.02 on the synthetic data.
+6. **`volta_rfm_analysis.py`** — R/F/M 1-5 scoring (recency inverted) +
+   lifecycle `segment_customers` (≥5 labels) + size bar chart + R/F/M heatmap.
+7. **`volta_clv_modeling.py`** — 3 CLV methods: historical, retention-curve
+   (power-law fit `fit_power_retention`), and probabilistic Gamma-Gamma MLE
+   (`_gamma_gamma_mle`, inline). Segments mirror Project 4.
+8. **`volta_attribution.py`** — first/last/linear + Shapley value
+   (`shapley_credit`, normalized per journey). Imports `CHANNEL_WEIGHT` from
+   `generate_attribution_data.py`.
+9. **`volta_anomaly_detection.py`** — Z-score / IQR / Isolation Forest scored
+   against ground truth (precision/recall/F1). `add_features` builds log-amount +
+   user velocity.
 
 ### Shared Helpers (`utils/common.py`)
 
 - `setup(style="dark_background", float_format="{:.2f}")` — scoped warnings
   (FutureWarning/UserWarning only), plt style, pandas float format.
 - `print_section(title, width=70, blank=True)` / `print_subsection()`.
-- `data_path(filename)` — resolves repo-root first, then `data/` fallback.
+- `data_path(filename)` — prefers `data/`, falls back to repo root.
+- `OUTPUT_DIR` — `outputs/` for all PNGs (imported by the scripts).
 - `CONSTANTS` — LTV, ARPU free/premium, MDE, baseline conversion, α, power,
-  fleet assumptions. Centralised so the four scripts don't drift apart.
+  fleet assumptions. Centralised so the scripts don't drift apart.
 
 ### Generators (seeded, reproducible)
 
@@ -108,35 +141,53 @@ analysis. All four import shared helpers from `utils/common.py`.
   with `install_date` + `first_tx_date` (lognormal gap per channel) for the
   time-to-convert analysis. Binary flag columns preserved; run once after
   cloning if timestamps are missing.
+- `generate_churn_data.py` → `volta_churn_data.csv` (non-linear churn cliff so
+  RF beats LR).
+- `generate_rfm_data.py` → `volta_rfm_transactions.csv` (per-archetype buying
+  patterns; champions/loyal/potential/at-risk/lost/new).
+- `generate_clv_data.py` → `volta_clv_customers.csv` + `volta_clv_cohorts.csv`
+  (segments mirror Project 4).
+- `generate_attribution_data.py` → `volta_attribution_journeys.csv`
+  (`CHANNEL_WEIGHT` reused by `volta_attribution.py`).
+- `generate_anomaly_data.py` → `volta_anomaly_transactions.csv` (ground-truth
+  `is_anomaly`; amount / late-night / velocity anomaly types).
+
+All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs them all.
 
 ### Legacy Utility Modules (`utils/`)
 
 - `utils/report_generator.py` — Excel report generation (`openpyxl`). Not imported
-  by the four main scripts; available for future report automation.
+  by the nine main scripts; available for future report automation.
 - `utils/pdf_processor.py` — PDF table extraction (`pdfplumber`, `pypdf`). Not
   imported by the main scripts.
 
 ### Data Files
 
-- `data/volta_funnel_data.csv` — committed funnel dataset (Project 1, 10k rows).
-- Other CSVs are produced by the generators above (repo root). `data_path()`
-  resolves both locations, so scripts run from repo root regardless of where the
-  CSV lands.
+- `data/*.csv` — all synthetic datasets (funnel CSV committed with 10k rows; the
+  rest produced by generators). `data_path()` prefers `data/` with a repo-root
+  fallback, and generators write there, so scripts run from repo root.
 
 ### Outputs
 
-- `viz*.png` — funnel visualizations (generated by Project 1, tracked in git).
+- `outputs/*.png` — all visualizations across the nine projects (funnel viz1-4,
+  ab_power_curve, cohort_heatmap, segmentation_*, churn_*, rfm_*, clv_by_method,
+  attribution_models, anomaly_detections), tracked in git.
+- `data/*.csv` — all synthetic datasets (funnel CSV committed; others produced by
+  generators), tracked in git. `data_path()` and generators route to `data/`; scripts
+  write PNGs to `OUTPUT_DIR` (`outputs/`).
 - `.planning/` — GSD workflow artifacts (see below).
 - `doc/`, `presentations/` — PRD and slide artifacts (legacy/speculative).
 
 ## Working with This Codebase
 
-- **No test suite.** Verify changes by running the relevant `volta_*.py` and
-  checking printed output + generated files. `uv run python -c "import volta_X"`
-  must not print analysis (confirms the `main()` structure). *(Note: a 33→54-
-  test pytest suite was added in Sprint 1 — `uv run pytest` now runs it.)*
+- **Test suite + coverage.** `uv run pytest` runs 58+ tests including end-to-end
+  smoke tests that execute each `main()`. Coverage (~96% on active code) is on by
+  default via `addopts`. `uv run python -c "import volta_X"` must not print analysis
+  (confirms the `main()` structure).
 - **Ruff is configured.** `uv run ruff check .` should pass clean; `ruff format .`
-  for whitespace/style.
+  for whitespace/style. Pre-commit runs both automatically.
+- **mypy checks new code only.** The four legacy scripts carry `# mypy: ignore-errors`;
+  new Sprint 3+ scripts must be typed and pass `uv run mypy`.
 - **`select_k` runtime:** `silhouette_score` is O(n²); on 50k users it
   subsamples to 10k points (~7s for the full K=2..8 sweep). Same subsample
   pattern in `plot_silhouette` (5k) — keep it if you touch either.
@@ -160,4 +211,4 @@ Planning artifacts live in `.planning/`: `PROJECT.md`, `REQUIREMENTS.md`,
 `/gsd-transition N→N+1`. Mode: YOLO; granularity: fine; phases independent.
 
 ---
-*CLAUDE.md updated: 2026-08-21 (Sprint 1 — углубление аналитики: A1-A4, F1-F3, R1-R3, S1-S3)*
+*CLAUDE.md updated: 2026-08-24 (Sprints 2-5 — engineering layer, projects 5-9, notebooks, docs)*

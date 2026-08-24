@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volta Neobank — Product Analytics Portfolio</title>
+<style>
+  :root{--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--card:#1e293b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+  .slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:4rem 6rem;max-width:1100px;margin:0 auto}
+  h1{font-size:2.6rem;color:var(--accent);margin-bottom:.5rem}
+  h2{font-size:1.5rem;color:var(--accent);margin-bottom:1.2rem;border-bottom:1px solid var(--card);padding-bottom:.4rem}
+  .kicker{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:.8rem;margin-bottom:.8rem}
+  .sub{color:var(--muted);font-size:1.1rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem}
+  .card{background:var(--card);border-radius:12px;padding:1.2rem}
+  .card .k{font-size:.8rem;color:var(--muted)}
+  .card .v{font-size:1.7rem;font-weight:700;color:var(--accent)}
+  .card .d{font-size:.85rem;color:var(--muted);margin-top:.3rem}
+  ul{margin-top:1rem;list-style:none}
+  li{padding:.35rem 0;border-left:3px solid var(--accent);padding-left:.8rem;margin:.3rem 0}
+  img{max-width:100%;border-radius:10px;border:1px solid var(--card);margin-top:1rem}
+  .row{display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+  .nav{position:fixed;right:1rem;bottom:1rem;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+
+<section class="slide">
+  <div class="kicker">Product Analytics Portfolio · Fintech</div>
+  <h1>Volta Neobank</h1>
+  <p class="sub">Nine projects, one narrative: <b>discover → validate → measure → optimize</b>.</p>
+  <p class="sub" style="margin-top:1rem">Synthetic data · seeded generators · reproducible · 101 tests · 97% coverage</p>
+  <div class="grid">
+    <div class="card"><div class="k">Projects</div><div class="v">9</div><div class="d">funnel → A/B → retention → segmentation → churn → RFM → CLV → attribution → anomaly</div></div>
+    <div class="card"><div class="k">A/B lift</div><div class="v">+6.2pp</div><div class="d">KYC progress bar, p&lt;0.0001, no SRM</div></div>
+    <div class="card"><div class="k">M3 retention</div><div class="v">+9.2pp</div><div class="d">after the fix; +€227K/yr LTV</div></div>
+    <div class="card"><div class="k">Test suite</div><div class="v">101</div><div class="d">unit + end-to-end smoke, 97% coverage</div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>1 · Onboarding Funnel — find the bottleneck</h2>
+  <div class="row">
+    <img src="../outputs/viz1_main_funnel.png" alt="funnel" style="max-width:420px">
+    <ul>
+      <li><b>Registration</b> = biggest absolute drop (−2,682 users)</li>
+      <li><b>KYC Complete</b> = biggest relative drop (56.6% step conv)</li>
+      <li>Referral converts 11.7pp better than paid social</li>
+      <li>iOS beats Android at every step</li>
+    </ul>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>2 · A/B Test — validate the fix</h2>
+  <div class="row">
+    <ul>
+      <li>KYC progress bar: control 55.8% → treatment 62.1%</li>
+      <li>+6.24pp, Z=6.35, p&lt;0.0001, 95% CI [+4.26, +8.16]pp</li>
+      <li>No SRM (p=1.00); covariate balance confirmed</li>
+      <li>Method: CUPED, AA-test (type-I=0.050), sensitivity at MDE</li>
+      <li>Business impact: <b>+€716K/yr</b></li>
+    </ul>
+    <img src="../outputs/ab_power_curve.png" alt="power" style="max-width:400px">
+  </div>
+</section>
+
+<section class="slide">
+  <h2>3 · Retention &amp; Cohort — did it hold?</h2>
+  <div class="row">
+    <img src="../outputs/cohort_heatmap.png" alt="cohort" style="max-width:420px">
+    <ul>
+      <li>M1 retention +10pp step-change after the Sep 2024 fix</li>
+      <li>M3 retention +9.2pp (Welch t-test + Cohen's d)</li>
+      <li>Premium vs Free LTV = <b>4.3×</b> (ARPU 2.66× × retention 1.62×)</li>
+      <li>Fleet impact: <b>+€227K/yr</b> incremental LTV</li>
+    </ul>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>4 · Segmentation — who are the users?</h2>
+  <div class="row">
+    <ul>
+      <li>K=4 chosen from data (marginal-gain elbow + silhouette)</li>
+      <li>Power 12% / Growth 24% / Casual 32% / Dormant 32%</li>
+      <li>Lorenz: 12% of users → 41% of revenue</li>
+      <li>Monetization: +€310K/yr from segment migration</li>
+    </ul>
+    <img src="../outputs/segmentation_pca_scatter.png" alt="pca" style="max-width:400px">
+  </div>
+</section>
+
+<section class="slide">
+  <h2>5-9 · Extended portfolio</h2>
+  <div class="grid">
+    <div class="card"><div class="k">Churn prediction</div><div class="v">RF +0.03</div><div class="d">ROC-AUC over logistic; top driver = inactivity</div></div>
+    <div class="card"><div class="k">RFM</div><div class="v">6 segs</div><div class="d">Champions→Lost lifecycle scoring</div></div>
+    <div class="card"><div class="k">CLV</div><div class="v">3 methods</div><div class="d">historical · retention-curve · Gamma-Gamma</div></div>
+    <div class="card"><div class="k">Attribution</div><div class="v">4 models</div><div class="d">first/last/linear/Shapley — referral wins</div></div>
+    <div class="card"><div class="k">Anomaly</div><div class="v">IF F1 .50</div><div class="d">Isolation Forest beats single-amount detectors</div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Bottom line</h2>
+  <ul>
+    <li>One data-driven loop from diagnosis to ship decision and long-term measurement</li>
+    <li>Rigorous stats: CUPED, AA-tests, SRM, multiple-testing correction, bootstrap CIs</li>
+    <li>Reproducible: seeded generators, `make data`, 101 tests, pre-commit, CI</li>
+    <li>An ML + product-analytics depth few candidates can show in one repo</li>
+  </ul>
+</section>
+
+<div class="nav">Volta Neobank · Product Analytics Portfolio</div>
+</body>
+</html>

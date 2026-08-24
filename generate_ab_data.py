@@ -21,6 +21,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from utils.common import DATA_DIR
+
 N_PER_ARM = 5000
 SEED = 42
 RNG = np.random.default_rng(SEED)
@@ -166,8 +168,8 @@ def main() -> None:
 
     seg = compute_segment_results(df)
 
-    df.to_csv("volta_ab_experiment.csv", index=False)
-    seg.to_csv("segment_results.csv", index=False)
+    df.to_csv(DATA_DIR / "volta_ab_experiment.csv", index=False)
+    seg.to_csv(DATA_DIR / "segment_results.csv", index=False)
 
     print(f"Generated {len(df)} users ({N_PER_ARM}/arm)")
     print(f"  Control CR:   {control['kyc_completed'].mean():.3f}")

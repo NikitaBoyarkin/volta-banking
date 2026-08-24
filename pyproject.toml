@@ -21,7 +21,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=2.3.1",
+    "nbconvert>=7.17.1",
+    "nbformat>=5.11.1",
+    "pre-commit>=4.6.2",
     "pytest>=8.0.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.6.0",
 ]
 
@@ -38,6 +43,41 @@ quote-style = "double"
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E501", "E402"]
 
+[tool.mypy]
+python_version = "3.10"
+# The four legacy analysis scripts are dynamic pandas code (see CLAUDE.md) and
+# carry `# mypy: ignore-errors`; mypy enforces typing on NEW code (Sprint 3+).
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+files = [
+    "volta_churn_prediction.py",
+    "volta_rfm_analysis.py",
+    "volta_clv_modeling.py",
+    "volta_attribution.py",
+    "volta_anomaly_detection.py",
+    "utils/common.py",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=utils --cov-report=term-missing"
+
+[tool.coverage.run]
+# utils/pdf_processor.py and utils/report_generator.py are legacy/speculative
+# modules not imported by the four analysis scripts (see CLAUDE.md). Excluded so
+# the headline metric reflects active analytical code.
+omit = [
+    "utils/pdf_processor.py",
+    "utils/report_generator.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

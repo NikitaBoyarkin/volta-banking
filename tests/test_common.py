@@ -27,11 +27,11 @@ def test_data_path_resolves_committed_funnel_csv() -> None:
     assert p.name == "volta_funnel_data.csv"
 
 
-def test_data_path_prefers_repo_root() -> None:
-    """Generated CSVs live in repo root — data_path must prefer root over data/."""
+def test_data_path_prefers_data_dir() -> None:
+    """Generated CSVs live in data/ — data_path must prefer the canonical dir."""
     p = data_path("volta_ab_experiment.csv")
     assert p.exists()
-    assert p.parent.name != "data"
+    assert p.parent.name == "data"
 
 
 def test_print_section_prints_banner(capsys) -> None:

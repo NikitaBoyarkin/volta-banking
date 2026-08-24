@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Volta Neobank — A/B Test: KYC Progress Bar Analysis
 
@@ -34,9 +35,8 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import norm
 
-from utils.common import CONSTANTS, data_path, print_section, print_subsection, setup
+from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
 
-OUTPUT_DIR = Path(__file__).resolve().parent
 N_BOOT = 2000
 BOOT_SEED = 42
 AA_SEED = 42

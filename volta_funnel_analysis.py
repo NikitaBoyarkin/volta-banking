@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Volta Neobank — Onboarding Funnel Analysis
 
@@ -33,7 +34,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-from utils.common import CONSTANTS, data_path, print_section, print_subsection, setup
+from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
 
 # ── Funnel definition ────────────────────────────────────────────────────────
 FUNNEL_STEPS = [
@@ -52,7 +53,6 @@ FUNNEL_LABELS = [
     "Card Ordered",
     "First Transaction",
 ]
-OUTPUT_DIR = Path(__file__).resolve().parent
 
 
 # ── Data ─────────────────────────────────────────────────────────────────────
