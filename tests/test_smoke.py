@@ -67,6 +67,21 @@ def anomaly_output() -> str:
     return _run_main("volta_anomaly_detection")
 
 
+@pytest.fixture(scope="module")
+def spend_output() -> str:
+    return _run_main("volta_spend_analysis")
+
+
+@pytest.fixture(scope="module")
+def cs_churn_output() -> str:
+    return _run_main("volta_cs_churn")
+
+
+@pytest.fixture(scope="module")
+def nps_output() -> str:
+    return _run_main("volta_nps_trends")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -102,3 +117,15 @@ def test_attribution_runs(attribution_output: str) -> None:
 
 def test_anomaly_runs(anomaly_output: str) -> None:
     assert "Analysis complete" in anomaly_output
+
+
+def test_spend_runs(spend_output: str) -> None:
+    assert "Analysis complete" in spend_output
+
+
+def test_cs_churn_runs(cs_churn_output: str) -> None:
+    assert "Analysis complete" in cs_churn_output
+
+
+def test_nps_runs(nps_output: str) -> None:
+    assert "Analysis complete" in nps_output

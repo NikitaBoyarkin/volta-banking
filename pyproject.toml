@@ -56,6 +56,9 @@ files = [
     "volta_clv_modeling.py",
     "volta_attribution.py",
     "volta_anomaly_detection.py",
+    "volta_spend_analysis.py",
+    "volta_cs_churn.py",
+    "volta_nps_trends.py",
     "utils/common.py",
 ]
 

@@ -1,9 +1,11 @@
 """Generate synthetic support-ticket data for Volta.
 
 Produces ``data/volta_support_tickets.csv`` — customer-service tickets with
-category, priority, resolution time and CSAT. It connects to the churn project
-(``volta_churn_data.csv`` carries a ``support_tickets`` feature): users who open
-more tickets — especially unresolved ones — are more likely to churn.
+category, priority, resolution time and CSAT. It connects to the churn project:
+the per-user ticket count is taken from ``volta_churn_data.csv``'s
+``support_tickets`` feature, so this ledger is the ground truth behind that
+feature and the two datasets agree. Users who open more tickets — especially
+unresolved ones — are more likely to churn.
 
 Columns:
   - ticket_id   : int, unique
@@ -53,10 +55,28 @@ PRIORITY_HOURS = {"low": 48.0, "medium": 18.0, "high": 6.0, "urgent": 2.0}
 PRIORITY_CSAT = {"low": 3.6, "medium": 3.9, "high": 4.2, "urgent": 4.4}
 
 
+def load_ticket_counts() -> np.ndarray:
+    """Per-user ticket counts from the churn dataset's ``support_tickets``.
+
+    The churn generator draws ``support_tickets`` per customer (SEED=42); this
+    ledger materialises those counts as actual tickets, so the two datasets
+    agree and the CS→churn analysis sees the same signal the churn model uses.
+    """
+    churn = pd.read_csv(DATA_DIR / "volta_churn_data.csv")
+    counts = (
+        churn.set_index("customer_id")["support_tickets"]
+        .reindex(range(N_USERS))
+        .fillna(0)
+        .astype(int)
+    )
+    return counts.to_numpy()
+
+
 def generate_tickets() -> pd.DataFrame:
     rng = RNG
-    # Ticket count per user: overdispersed Poisson (some users never write).
-    n_tickets = rng.poisson(0.9, size=N_USERS).astype(int)
+    # Ticket count per user comes from the churn dataset's support_tickets
+    # feature (ground truth behind it), not an independent draw.
+    n_tickets = load_ticket_counts()
 
     rows: list[dict] = []
     ticket_id = 0

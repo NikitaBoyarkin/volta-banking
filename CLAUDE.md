@@ -58,7 +58,7 @@ make all      # data + test + lint + type
 
 ## High-Level Architecture
 
-### Nine-Project Portfolio
+### Twelve-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
@@ -117,6 +117,15 @@ analysis. All import shared helpers from `utils/common.py`.
 9. **`volta_anomaly_detection.py`** — Z-score / IQR / Isolation Forest scored
    against ground truth (precision/recall/F1). `add_features` builds log-amount +
    user velocity.
+10. **`volta_spend_analysis.py`** — spend analysis. Loads
+   `volta_transactions.csv`. Category / channel / merchant breakdown, decline
+   rate by category, monthly spend trend.
+11. **`volta_cs_churn.py`** — support experience vs churn. Joins
+   `volta_support_tickets.csv` with `volta_churn_data.csv`. Churn rate by ticket
+   volume, unresolved tickets and CSAT band; category mix churned vs retained.
+12. **`volta_nps_trends.py`** — NPS trends & drivers. Loads
+   `volta_nps_surveys.csv`. Monthly NPS, promoter/passive/detractor mix, NPS by
+   driver, comment length by segment.
 
 ### Shared Helpers (`utils/common.py`)
 
@@ -151,6 +160,18 @@ analysis. All import shared helpers from `utils/common.py`.
   (`CHANNEL_WEIGHT` reused by `volta_attribution.py`).
 - `generate_anomaly_data.py` → `volta_anomaly_transactions.csv` (ground-truth
   `is_anomaly`; amount / late-night / velocity anomaly types).
+- `generate_transactions_data.py` → `volta_transactions.csv` (spend ledger;
+  category / merchant / channel / status / country; segment-driven intensity).
+- `generate_support_tickets_data.py` → `volta_support_tickets.csv` (CS tickets;
+  category / priority / CSAT; ground truth behind churn's `support_tickets`).
+- `generate_nps_data.py` → `volta_nps_surveys.csv` (NPS 0-10 + driver +
+  promoter/passive/detractor segment).
+- `generate_feature_events_data.py` → `volta_feature_events.csv` (feature-usage
+  event stream; adoption differs by segment).
+- `generate_campaigns_data.py` → `volta_campaigns.csv` (campaign spend +
+  impressions→clicks→installs→KYC→first-tx funnel per channel).
+- `generate_referrals_data.py` → `volta_referrals.csv` (referral status funnel
+  sent→accepted→KYC→first-tx; referral converts best).
 
 All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs them all.
 
