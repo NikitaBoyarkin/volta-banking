@@ -17,6 +17,12 @@ data:
 	uv run python generate_clv_data.py
 	uv run python generate_attribution_data.py
 	uv run python generate_anomaly_data.py
+	uv run python generate_transactions_data.py
+	uv run python generate_support_tickets_data.py
+	uv run python generate_nps_data.py
+	uv run python generate_feature_events_data.py
+	uv run python generate_campaigns_data.py
+	uv run python generate_referrals_data.py
 
 test:
 	uv run pytest
