@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A product analytics portfolio for a fictional fintech neobank ("Volta"). Nine Python scripts covering the full analytics lifecycle: funnel → experiment → retention → segmentation → churn → RFM → CLV → attribution → anomaly.
+A product analytics portfolio for a fictional fintech neobank ("Volta"). Twelve Python scripts covering the full analytics lifecycle: funnel → A/B experiment → retention → segmentation → churn → RFM → CLV → attribution → anomaly → spend → support-churn → NPS.
 
 ## Core Value
 
@@ -21,10 +21,13 @@ Employers can read and run each script independently to see end-to-end analytica
 - ✓ **CLV-01**: Customer Lifetime Value modeling using historical, predictive (retention-curve), and probabilistic (Gamma-Gamma) approaches — `volta_clv_modeling.py`
 - ✓ **ATTR-01**: Marketing attribution covering first-touch, last-touch, linear, and data-driven (Shapley value) models — `volta_attribution.py`
 - ✓ **ANOM-01**: Anomaly detection using statistical (Z-score, IQR) and ML (Isolation Forest) methods — `volta_anomaly_detection.py`
+- ✓ **SPEND-01**: Spend analysis — category/channel/merchant breakdown, decline rate, monthly trend — `volta_spend_analysis.py`
+- ✓ **CSCHURN-01**: Customer-support experience vs churn (ticket volume, unresolved, CSAT) — `volta_cs_churn.py`
+- ✓ **NPS-01**: NPS trends & drivers (monthly NPS, promoter mix, drivers) — `volta_nps_trends.py`
 
 ### Active
 
-None — all nine phases are complete.
+None — all twelve domains are complete.
 
 ### Out of Scope
 
@@ -33,7 +36,7 @@ None — all nine phases are complete.
 
 ## Context
 
-- Brownfield project: existing codebase with four working scripts, codebase map, and CLAUDE.md
+- Twelve-project portfolio: four core narrative scripts (funnel/A-B/retention/segmentation) plus eight extensions, with codebase map and CLAUDE.md
 - Target audience: hiring managers evaluating analytical Python skills
 - Consistent style: dark-themed matplotlib, pandas + scikit-learn, synthetic CSV generation inline, print statements for progress
 - Each script independently executable from repo root via `uv run python volta_*.py`
@@ -51,7 +54,7 @@ None — all nine phases are complete.
 |----------|-----------|---------|
 | Keep single-file pattern | Portfolio readability — each script tells a complete story | ✓ Done |
 | Fresh synthetic data per script | Independence, no hidden dependencies between scripts | ✓ Done |
-| Match existing complexity | Consistent employer experience across all nine scripts | ✓ Done |
+| Match existing complexity | Consistent employer experience across all twelve scripts | ✓ Done |
 | Shared utilities | `utils/common.py` centralizes setup/constants/paths | ✓ Done |
 | Separate seeded generators | Reproducible `data/*.csv` + `make data` | ✓ Done |
 | Engineering quality | ruff + mypy (new code) + pytest-cov (97%) + pre-commit + CI | ✓ Done |
@@ -74,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-24 — all nine phases validated; engineering + presentation sprints complete*
+*Last updated: 2026-09-02 — all twelve domains validated; engineering + presentation sprints complete; PRD snapshot at `docs/prd.md`*

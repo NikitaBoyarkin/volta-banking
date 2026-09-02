@@ -54,6 +54,29 @@
 
 Deferred to future release.
 
+## v3 Requirements (implemented 2026-09-02)
+
+### Spend Analysis
+
+- [x] **SPEND-01**: Script generates synthetic spend ledger data with category, merchant, channel, status, and country
+- [x] **SPEND-02**: Spend share is broken down by category, channel, and top merchants
+- [x] **SPEND-03**: Decline rate is computed by category
+- [x] **SPEND-04**: Monthly spend trend is visualized (`spend_monthly_trend.png`, `spend_by_category.png`)
+
+### Customer-Support Experience vs Churn
+
+- [x] **CSCHURN-01**: Script joins support tickets with churn data on customer id
+- [x] **CSCHURN-02**: Churn rate is computed by ticket volume, unresolved-ticket status, and CSAT band
+- [x] **CSCHURN-03**: Support category mix is reported separately for churned vs retained customers
+- [x] **CSCHURN-04**: Ticket-volume vs churn relationship is visualized (`cs_churn_by_tickets.png`)
+
+### NPS Trends & Drivers
+
+- [x] **NPS-01**: Script loads survey data with NPS 0–10, driver, and promoter/passive/detractor segment
+- [x] **NPS-02**: Monthly NPS and promoter/passive/detractor mix are computed
+- [x] **NPS-03**: NPS is broken down by driver and by comment length segment
+- [x] **NPS-04**: Monthly trend and driver breakdown are visualized (`nps_monthly_trend.png`, `nps_by_driver.png`)
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -103,7 +126,8 @@ Deferred to future release.
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 30
+- v3 requirements: 12 total (3 domains × 4)
+- Mapped to phases: 30 + 12
 - Unmapped: 0 ✓
 
 ---

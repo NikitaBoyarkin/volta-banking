@@ -125,5 +125,19 @@
 - Update `README.md` to list all 9 scripts with execution order
 - Ensure `pyproject.toml` dependencies cover all new imports (e.g., `scikit-learn` is already present)
 
+## Post-Roadmap Expansion (Implemented)
+
+Three domains were added after the original 5-phase roadmap and are implemented + CI-verified (2026-09-02):
+
+| # | Phase | Goal | Scripts | Status |
+|---|-------|------|---------|--------|
+| 6 | Spend Analysis | Category/channel/merchant breakdown, decline rate, monthly trend | `volta_spend_analysis.py`, `generate_transactions_data.py` | ✓ Done |
+| 7 | Support vs Churn | Support experience impact on churn (tickets, CSAT) | `volta_cs_churn.py`, `generate_support_tickets_data.py` | ✓ Done |
+| 8 | NPS Trends | Monthly NPS, promoter mix, drivers | `volta_nps_trends.py`, `generate_nps_data.py` | ✓ Done |
+
+**Validation Gate (applies to phases 6–8):** script runs from repo root; CSV in `data/`; ≥1 PNG in `outputs/`; printed business metric table.
+
+As-is snapshot: see `docs/prd.md`.
+
 ---
 *Roadmap created: 2026-05-02*

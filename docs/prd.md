@@ -49,7 +49,7 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 ### Goal 3: Engineering quality
 - **Описание:** portfolio held to production standards, not throwaway analysis.
 - **Метрики:**
-  - Test coverage on active code: baseline 96% → target ≥ 90%.
+  - Test coverage on active code: baseline 97% (2026-09-02 CI) → target ≥ 90%.
   - `ruff check .` passes clean.
   - `mypy` passes on new (Sprint 3+) code.
   - pre-commit runs ruff + pytest before commits.
@@ -268,7 +268,7 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 **Описание:** the repo is guarded by pytest (incl. end-to-end smoke tests that execute each `main()`), ruff lint/format, mypy on new code, pre-commit, and CI.
 
 **Acceptance Criteria:**
-- [ ] `uv run pytest` passes; coverage on active code ≥ 90% (baseline 96%).
+- [ ] `uv run pytest` passes; coverage on active code ≥ 90% (baseline 97%, verified 2026-09-02).
 - [ ] Smoke tests execute every `volta_*.py` `main()` end-to-end without error.
 - [ ] `ruff check .` passes clean (`select = ["E","W","F","I","B","C4","UP"]`, `ignore = ["E501"]`).
 - [ ] `mypy` passes on new code; legacy scripts remain explicitly annotated `# mypy: ignore-errors` (not silent).
