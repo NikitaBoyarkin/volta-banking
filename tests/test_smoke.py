@@ -87,6 +87,11 @@ def jtbd_output() -> str:
     return _run_main("volta_jtbd_mapping")
 
 
+@pytest.fixture(scope="module")
+def unit_economics_output() -> str:
+    return _run_main("volta_unit_economics")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -138,3 +143,7 @@ def test_nps_runs(nps_output: str) -> None:
 
 def test_jtbd_runs(jtbd_output: str) -> None:
     assert "Analysis complete" in jtbd_output
+
+
+def test_unit_economics_runs(unit_economics_output: str) -> None:
+    assert "Analysis complete" in unit_economics_output

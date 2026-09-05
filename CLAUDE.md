@@ -58,7 +58,7 @@ make all      # data + test + lint + type
 
 ## High-Level Architecture
 
-### Thirteen-Project Portfolio
+### Fourteen-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
@@ -133,6 +133,13 @@ analysis. All import shared helpers from `utils/common.py`.
    contrast (support tickets, KYC duration), heatmap PNG
    (`jtbd_segment_cohort_heatmap.png`). Validates audit risk #3: Dormant = UX
    friction, not "no job".
+14. **`volta_unit_economics.py`** — traveler unit economics (Market & Jobs
+   layer, Sprint 6 T3). Loads `volta_unit_economics.csv`. Per-segment
+   revenue/cost/margin per transaction, traveler deep-dive by tx type, FX
+   break-even (cost 0.55% / spread 0.85%), sensitivity of blended margin to
+   FX cost & spread, scale projection at SOM (180K travelers) → negative
+   monthly P&L, sensitivity PNG (`traveler_unit_economics_sensitivity.png`).
+   Validates audit risk #1: traveler unit economics break at scale.
 
 ### Shared Helpers (`utils/common.py`)
 
@@ -182,6 +189,9 @@ analysis. All import shared helpers from `utils/common.py`.
 - `generate_jtbd_data.py` → `volta_jtbd_segments.csv` (40k users, 5 JTBD
   segments × 4 behavioral cohorts; Dormant over-represented in digital
   newcomers — the risk-#3 contrast).
+- `generate_unit_economics_data.py` → `volta_unit_economics.csv`
+  (transaction-level economics across 5 segments; travelers lose €/tx on FX —
+  the risk-#1 contrast).
 
 All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs them all.
 
