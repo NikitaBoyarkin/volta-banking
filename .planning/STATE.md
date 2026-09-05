@@ -41,6 +41,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-02)
 | No external CLV/attribution libraries | ✓ Confirmed | Inline Gamma-Gamma + Shapley |
 | Engineering layer | ✓ Done | ruff, mypy (new code), pytest-cov 97%, pre-commit, CI |
 | Presentation layer | ✓ Done | README charts, executed notebooks, executive deck |
+| Market & Jobs layer | ✓ Done | JTBD audit (segments + RAT) as documentation domain |
 
 ---
 
@@ -49,5 +50,5 @@ See: `.planning/PROJECT.md` (updated 2026-05-02)
 None.
 
 ---
-*State updated: 2026-08-24*
+*State updated: 2026-09-05*
 *Next update: On new phase or major change*

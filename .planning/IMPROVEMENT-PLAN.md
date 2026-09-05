@@ -52,19 +52,19 @@ F1–F3, R1–R3, S1–S3) выполнен, 54 теста зелёные, ruff 
 
 ---
 
-## Спринт 6: Product-thinking слой (JTBD-аудит) — запланирован
+## Спринт 6: Product-thinking слой (JTBD-аудит) — в работе (T1 ✅)
 
 **Источник:** `Obsidian/Z-core/AJTBD - Volta Full Audit.md` (2026-09-05) — топ-5 B2C-сегментов, RAT топ-5 рисков, 5 рекомендаций.
 **Конфликт:** PRD «новые домены — фиксация as-is» vs рекомендация #5 аудита «Market & Jobs как 13-й домен». Аудит — новый вход → переоткрыть для product-thinking слоя.
 
-| # | Задача | Приоритет | Критерий успеха |
-|---|--------|-----------|-----------------|
-| T1 | **Market & Jobs — 13-й домен** (README секция + REQ-017 в PRD + .planning + vault-заметки) | P0 | README/PRD содержат топ-5 сегментов + RAT-риски + ссылку на аудит; `make all` green |
-| T2 | **JTBD-сегменты × поведенческие когорты** (`generate_jtbd_data.py` + `volta_jtbd_mapping.py`) — валидация риска #3 (Dormant = UX, не работа) | P1 | chi-square значим, heatmap PNG, тест + ruff + mypy |
-| T3 | **Unit economics путешественников** (`generate_unit_economics_data.py` + `volta_unit_economics.py`) — валидация риска #1 | P1 | маржа по сегментам, break-even, sensitivity PNG, тест + ruff + mypy |
-| T4 | **Premium-апселл** (`volta_premium_upsell.py`) — валидация риска #2 | P2 | конверсия Free→Premium по когортам, топ-драйверы, PNG |
-| T5 | **45+ KYC deep-dive** (расширение funnel) — валидация риска #4 | P2 | KYC 45+ vs 25–34 по каналам, рекомендация по assisted-онбордингу |
-| T6 | **Реферал по сегментам** (расширение attribution) — валидация риска #5 | P2 | конверсия реферала по JTBD-сегментам, вывод о масштабировании |
+| # | Задача | Приоритет | Статус | Критерий успеха |
+|---|--------|-----------|--------|-----------------|
+| T1 | **Market & Jobs — 13-й домен** (README секция + REQ-017 в PRD + .planning + vault-заметки) | P0 | ✅ | README/PRD содержат топ-5 сегментов + RAT-риски + ссылку на аудит; `make all` green |
+| T2 | **JTBD-сегменты × поведенческие когорты** (`generate_jtbd_data.py` + `volta_jtbd_mapping.py`) — валидация риска #3 (Dormant = UX, не работа) | P1 | ⏳ | chi-square значим, heatmap PNG, тест + ruff + mypy |
+| T3 | **Unit economics путешественников** (`generate_unit_economics_data.py` + `volta_unit_economics.py`) — валидация риска #1 | P1 | ⏳ | маржа по сегментам, break-even, sensitivity PNG, тест + ruff + mypy |
+| T4 | **Premium-апселл** (`volta_premium_upsell.py`) — валидация риска #2 | P2 | ⏳ | конверсия Free→Premium по когортам, топ-драйверы, PNG |
+| T5 | **45+ KYC deep-dive** (расширение funnel) — валидация риска #4 | P2 | ⏳ | KYC 45+ vs 25–34 по каналам, рекомендация по assisted-онбордингу |
+| T6 | **Реферал по сегментам** (расширение attribution) — валидация риска #5 | P2 | ⏳ | конверсия реферала по JTBD-сегментам, вывод о масштабировании |
 
 ---
 
@@ -74,7 +74,7 @@ F1–F3, R1–R3, S1–S3) выполнен, 54 теста зелёные, ruff 
 2. ✅ **Спринт 3 (P0):** C1 → C2 → C3 → C4 → C5 — расширение портфолио.
 3. ✅ **Спринт 4 (P1):** D4 → B6 → D2 → (D1 пропущен) — презентация.
 4. 🔄 **Спринт 5 (P2):** H1 → H2 — гигиена документации.
-5. 📋 **Спринт 6 (P0–P2):** T1 (docs) → T2 → T3 (analytics) → T4–T6 (опционально) — product-thinking слой по JTBD-аудиту.
+5. 🔄 **Спринт 6 (P0–P2):** T1 ✅ → T2 → T3 (analytics) → T4–T6 (опционально) — product-thinking слой по JTBD-аудиту.
 
 **Правило:** каждая задача = тест + ruff чист + скрипт запускается. CI ловит регрессии автоматически.
 

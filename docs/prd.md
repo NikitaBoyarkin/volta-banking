@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Volta Banking is a self-contained product-analytics portfolio for a fictional fintech neobank. Twelve standalone Python scripts cover the full analytics lifecycle — onboarding funnel, A/B testing, cohort retention, segmentation, churn prediction, RFM, CLV, marketing attribution, anomaly detection, spend analysis, customer-support churn, and NPS trends — each driven by seeded synthetic data. The portfolio demonstrates end-to-end analytical thinking in every script (business question → data generation → insight → visualization), backed by production-grade engineering (96% test coverage, ruff, mypy, pre-commit, CI). Expected effect: an employer can run any `volta_*.py` from the repo root in a single command and independently evaluate the analytical skill on display.
+Volta Banking is a self-contained product-analytics portfolio for a fictional fintech neobank. Twelve standalone Python scripts plus a Market & Jobs product-thinking layer (JTBD audit) cover the full analytics lifecycle — onboarding funnel, A/B testing, cohort retention, segmentation, churn prediction, RFM, CLV, marketing attribution, anomaly detection, spend analysis, customer-support churn, and NPS trends — each driven by seeded synthetic data. The portfolio demonstrates end-to-end analytical thinking in every script (business question → data generation → insight → visualization), backed by production-grade engineering (96% test coverage, ruff, mypy, pre-commit, CI). Expected effect: an employer can run any `volta_*.py` from the repo root in a single command and independently evaluate the analytical skill on display.
 
 ## 2. Problem Statement
 
@@ -31,9 +31,9 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 ## 3. Goals & Success Metrics
 
 ### Goal 1: Breadth of analytical domains
-- **Описание:** cover the full analytics lifecycle across independent, standalone scripts — each a complete story from business question to visualization.
-- **Метрика:** number of independently runnable `volta_*.py` scripts.
-- **Baseline:** 12 scripts (as of 2026-09-02).
+- **Описание:** cover the full analytics lifecycle across independent, standalone scripts — each a complete story from business question to visualization — plus a Market & Jobs product-thinking layer (JTBD audit).
+- **Метрика:** number of independently runnable `volta_*.py` scripts + Market & Jobs documentation layer.
+- **Baseline:** 12 scripts + Market & Jobs (as of 2026-09-05).
 - **Target:** 12 maintained (no regression below this count without a documented removal).
 - **Срок:** ongoing.
 - **Метод измерения:** count of `volta_*.py` files passing an end-to-end smoke run.
@@ -91,7 +91,7 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 
 ## 5. Functional Requirements
 
-> All REQ-001..REQ-012 are **implemented and verified** (status: Done). Engineering requirements REQ-013..REQ-016 are partially enforced by CI and are the maintenance focus. Every requirement below is atomic with ≥3 acceptance criteria.
+> All REQ-001..REQ-012 are **implemented and verified** (status: Done). Engineering requirements REQ-013..REQ-016 are partially enforced by CI and are the maintenance focus; REQ-017 (Market & Jobs) is a documentation layer added 2026-09-05. Every requirement below is atomic with ≥3 acceptance criteria.
 
 ### Must Have (P0) — core analytical domains
 
@@ -287,6 +287,17 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 
 **Dependencies:** None
 
+#### REQ-017: Market & Jobs (JTBD product-thinking layer)
+**Описание:** a documentation layer capturing Volta's B2C market: top-5 JTBD segments, RAT risk ranking, and recommendations. Source: `Obsidian/Z-core/AJTBD - Volta Full Audit.md` (2026-09-05). Not a script — a product-thinking domain that signals breadth to recruiters.
+
+**Acceptance Criteria:**
+- [ ] README contains a "Market & Jobs" section with top-5 segments and RAT risks.
+- [ ] PRD references the JTBD audit note and its recommendations.
+- [ ] `.planning/` docs reflect the audit as a product-thinking layer.
+- [ ] Vault note `PRD - Volta Banking.md` links the audit.
+
+**Dependencies:** None
+
 ## 6. Non-Functional Requirements
 
 ### Performance
@@ -343,7 +354,7 @@ Not applicable — the repo is a portfolio, not a deployed system. Change contro
 
 ## 8. Implementation Roadmap
 
-> Status: **fully implemented.** All twelve domains and the engineering layer are done and verified (2026-08-24, Sprints 2–5). The roadmap below is the as-is snapshot plus a conservative maintenance horizon — per decision, no new features are planned.
+> Status: **fully implemented.** All twelve domains, the engineering layer, and the Market & Jobs layer are done and verified (2026-08-24 Sprints 2–5; Market & Jobs 2026-09-05). The roadmap below is the as-is snapshot plus a conservative maintenance horizon — per decision, no new features are planned.
 
 ### Phase 1 (DONE): Foundation — core narrative (4 scripts)
 **Goal:** funnel → A/B → retention → segmentation.
@@ -366,6 +377,7 @@ Not applicable — the repo is a portfolio, not a deployed system. Change contro
 - [ ] Re-run `make data` + `make all` on Python 3.14 (verify no dependency drift) — Small (2h)
 - [ ] Refresh README/CLAUDE script index if repository layout changes — Small (1h)
 - [ ] Keep `docs/prd.md` requirement count in sync with the repo — Small (1h)
+- [ ] Keep Market & Jobs (REQ-017) in sync with the JTBD audit note — Small (1h)
 **Validation Checkpoint:** CI green after each maintenance pass; script count stable at 12.
 
 ### Зависимости задач
@@ -387,7 +399,7 @@ Critical Path: none (all work complete; Phase 4 is periodic upkeep)
 3. **External advanced libraries** — `lifetimes`, `pymc-marketing`, `mta`, or XGBoost/LightGBM/CatBoost — deps stay minimal (scikit-learn only); Random Forest suffices for the demo.
 4. **Model serialization** (`joblib`/`pickle`) — scripts are one-off demonstrations.
 5. **Deployment / hosting** — not a shipped service; no SLA, no RTO/RPO targets.
-6. **New analytical domains** — explicitly deferred (decision: fixate, don't extend).
+6. **New analytical script domains** — explicitly deferred (decision: fixate, don't extend). Exception: Market & Jobs (REQ-017) added as a documentation layer, not a script.
 
 ## 10. Open Questions & Risks
 
@@ -428,4 +440,4 @@ Critical Path: none (all work complete; Phase 4 is periodic upkeep)
 
 **Конец PRD**
 
-*Scope: comprehensive (as-is snapshot). Full inventory: 16 requirements (12 domains + 4 engineering/platform), 12 user stories, all verified.*
+*Scope: comprehensive (as-is snapshot). Full inventory: 17 requirements (12 domains + Market & Jobs + 4 engineering/platform), 12 user stories, all verified.*
