@@ -63,7 +63,7 @@ F1–F3, R1–R3, S1–S3) выполнен, 54 теста зелёные, ruff 
 | T2 | **JTBD-сегменты × поведенческие когорты** (`generate_jtbd_data.py` + `volta_jtbd_mapping.py`) — валидация риска #3 (Dormant = UX, не работа) | P1 | ✅ | chi-square значим (p<0.001), Dormant 40% Digital Newcomers vs 15% Family Budgeters, heatmap PNG, тест + ruff + mypy |
 | T3 | **Unit economics путешественников** (`generate_unit_economics_data.py` + `volta_unit_economics.py`) — валидация риска #1 | P1 | ✅ | маржа по сегментам, break-even, sensitivity PNG, тест + ruff + mypy |
 | T4 | **Premium-апселл** (`volta_premium_upsell.py`) — валидация риска #2 | P2 | ✅ | конверсия Free→Premium по когортам, топ-драйверы, PNG |
-| T5 | **45+ KYC deep-dive** (расширение funnel) — валидация риска #4 | P2 | ⏳ | KYC 45+ vs 25–34 по каналам, рекомендация по assisted-онбордингу |
+| T5 | **45+ KYC deep-dive** (`volta_kyc_deep_dive.py`, HTE-разрез A/B по возрасту + каналы) — валидация риска #4 | P2 | ✅ | 45+ lift +0.6pp (ns) vs 35-44 +10pp; referral — лучший канал для 45+; рекомендация по assisted-онбордингу |
 | T6 | **Реферал по сегментам** (расширение attribution) — валидация риска #5 | P2 | ⏳ | конверсия реферала по JTBD-сегментам, вывод о масштабировании |
 
 ---

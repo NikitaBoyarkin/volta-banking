@@ -58,7 +58,7 @@ make all      # data + test + lint + type
 
 ## High-Level Architecture
 
-### Fifteen-Project Portfolio
+### Sixteen-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
@@ -147,6 +147,14 @@ analysis. All import shared helpers from `utils/common.py`.
    top upgrade reason per segment, bar chart PNG
    (`premium_upsell_conversion_by_segment.png`). Validates audit risk #2:
    premium upsell doesn't transfer to new segments.
+16. **`volta_kyc_deep_dive.py`** — 45+ KYC deep-dive (Market & Jobs layer,
+   Sprint 6 T5). Loads `volta_ab_experiment.csv` (the Project 2 A/B data — no
+   new generator). HTE cut of the KYC progress bar A/B by age group
+   (control/treatment rate, lift pp, two-proportion z-test per age), KYC
+   completion 45+ vs 25-34 by channel (referral = trust channel, smallest
+   gap), chi-square age × completion within treatment, grouped bar chart PNG
+   (`kyc_hte_by_age.png`). Validates audit risk #4: the KYC fix doesn't close
+   45+ — friction is trust, not UX.
 
 ### Shared Helpers (`utils/common.py`)
 
