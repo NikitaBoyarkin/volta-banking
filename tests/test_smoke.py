@@ -102,6 +102,11 @@ def kyc_deep_dive_output() -> str:
     return _run_main("volta_kyc_deep_dive")
 
 
+@pytest.fixture(scope="module")
+def referral_segments_output() -> str:
+    return _run_main("volta_referral_segments")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -165,3 +170,8 @@ def test_premium_upsell_runs(premium_upsell_output: str) -> None:
 
 def test_kyc_deep_dive_runs(kyc_deep_dive_output: str) -> None:
     assert "Analysis complete" in kyc_deep_dive_output
+
+
+def test_referral_segments_runs(referral_segments_output: str) -> None:
+    assert "Analysis complete" in referral_segments_output
+    assert "does NOT scale" in referral_segments_output
