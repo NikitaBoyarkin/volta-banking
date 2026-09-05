@@ -97,6 +97,11 @@ def premium_upsell_output() -> str:
     return _run_main("volta_premium_upsell")
 
 
+@pytest.fixture(scope="module")
+def kyc_deep_dive_output() -> str:
+    return _run_main("volta_kyc_deep_dive")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -156,3 +161,7 @@ def test_unit_economics_runs(unit_economics_output: str) -> None:
 
 def test_premium_upsell_runs(premium_upsell_output: str) -> None:
     assert "Analysis complete" in premium_upsell_output
+
+
+def test_kyc_deep_dive_runs(kyc_deep_dive_output: str) -> None:
+    assert "Analysis complete" in kyc_deep_dive_output
