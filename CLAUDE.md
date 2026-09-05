@@ -58,7 +58,7 @@ make all      # data + test + lint + type
 
 ## High-Level Architecture
 
-### Fourteen-Project Portfolio
+### Fifteen-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
@@ -140,6 +140,13 @@ analysis. All import shared helpers from `utils/common.py`.
    FX cost & spread, scale projection at SOM (180K travelers) → negative
    monthly P&L, sensitivity PNG (`traveler_unit_economics_sensitivity.png`).
    Validates audit risk #1: traveler unit economics break at scale.
+15. **`volta_premium_upsell.py`** — Free→Premium upsell (Market & Jobs layer,
+   Sprint 6 T4). Loads `volta_premium_upsell.csv`. Conversion by JTBD segment
+   and behavioral cohort, chi-square + two-proportion z-test (anchor vs digital
+   newcomers 45+), logistic-regression driver importance, offer-channel effect,
+   top upgrade reason per segment, bar chart PNG
+   (`premium_upsell_conversion_by_segment.png`). Validates audit risk #2:
+   premium upsell doesn't transfer to new segments.
 
 ### Shared Helpers (`utils/common.py`)
 
@@ -192,6 +199,9 @@ analysis. All import shared helpers from `utils/common.py`.
 - `generate_unit_economics_data.py` → `volta_unit_economics.csv`
   (transaction-level economics across 5 segments; travelers lose €/tx on FX —
   the risk-#1 contrast).
+- `generate_premium_upsell_data.py` → `volta_premium_upsell.csv` (40k users,
+  5 JTBD segments; anchor + status-seekers convert, digital newcomers 45+ and
+  family budgeters barely — the risk-#2 contrast).
 
 All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs them all.
 

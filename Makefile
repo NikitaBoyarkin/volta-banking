@@ -25,6 +25,7 @@ data:
 	uv run python generate_referrals_data.py
 	uv run python generate_jtbd_data.py
 	uv run python generate_unit_economics_data.py
+	uv run python generate_premium_upsell_data.py
 
 test:
 	uv run pytest

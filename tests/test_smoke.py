@@ -92,6 +92,11 @@ def unit_economics_output() -> str:
     return _run_main("volta_unit_economics")
 
 
+@pytest.fixture(scope="module")
+def premium_upsell_output() -> str:
+    return _run_main("volta_premium_upsell")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -147,3 +152,7 @@ def test_jtbd_runs(jtbd_output: str) -> None:
 
 def test_unit_economics_runs(unit_economics_output: str) -> None:
     assert "Analysis complete" in unit_economics_output
+
+
+def test_premium_upsell_runs(premium_upsell_output: str) -> None:
+    assert "Analysis complete" in premium_upsell_output
