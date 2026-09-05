@@ -58,7 +58,7 @@ make all      # data + test + lint + type
 
 ## High-Level Architecture
 
-### Twelve-Project Portfolio
+### Thirteen-Project Portfolio
 
 Each `volta_*.py` is self-contained, structured as **functions + `main()`** +
 `if __name__ == "__main__": main()`. Importing a module does **not** execute the
@@ -126,6 +126,13 @@ analysis. All import shared helpers from `utils/common.py`.
 12. **`volta_nps_trends.py`** — NPS trends & drivers. Loads
    `volta_nps_surveys.csv`. Monthly NPS, promoter/passive/detractor mix, NPS by
    driver, comment length by segment.
+13. **`volta_jtbd_mapping.py`** — JTBD segments × behavioral cohorts (Market &
+   Jobs layer, Sprint 6 T2). Loads `volta_jtbd_segments.csv`. Cross-tab JTBD
+   segment × cohort, chi-square test of independence, two-proportion z-test on
+   Dormant share (Digital Newcomers 45+ vs Family Budgeters), UX-friction
+   contrast (support tickets, KYC duration), heatmap PNG
+   (`jtbd_segment_cohort_heatmap.png`). Validates audit risk #3: Dormant = UX
+   friction, not "no job".
 
 ### Shared Helpers (`utils/common.py`)
 
@@ -172,6 +179,9 @@ analysis. All import shared helpers from `utils/common.py`.
   impressions→clicks→installs→KYC→first-tx funnel per channel).
 - `generate_referrals_data.py` → `volta_referrals.csv` (referral status funnel
   sent→accepted→KYC→first-tx; referral converts best).
+- `generate_jtbd_data.py` → `volta_jtbd_segments.csv` (40k users, 5 JTBD
+  segments × 4 behavioral cohorts; Dormant over-represented in digital
+  newcomers — the risk-#3 contrast).
 
 All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs them all.
 

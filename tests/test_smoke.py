@@ -82,6 +82,11 @@ def nps_output() -> str:
     return _run_main("volta_nps_trends")
 
 
+@pytest.fixture(scope="module")
+def jtbd_output() -> str:
+    return _run_main("volta_jtbd_mapping")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -129,3 +134,7 @@ def test_cs_churn_runs(cs_churn_output: str) -> None:
 
 def test_nps_runs(nps_output: str) -> None:
     assert "Analysis complete" in nps_output
+
+
+def test_jtbd_runs(jtbd_output: str) -> None:
+    assert "Analysis complete" in jtbd_output

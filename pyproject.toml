@@ -59,13 +59,14 @@ files = [
     "volta_spend_analysis.py",
     "volta_cs_churn.py",
     "volta_nps_trends.py",
+    "volta_jtbd_mapping.py",
     "utils/common.py",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=utils --cov-report=term-missing"
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=utils --cov-report=term-missing"
 
 [tool.coverage.run]
 # utils/pdf_processor.py and utils/report_generator.py are legacy/speculative
