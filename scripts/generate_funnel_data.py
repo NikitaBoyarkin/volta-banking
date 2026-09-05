@@ -14,7 +14,7 @@ Columns added:
                      who never reached first_tx.
 
 Run from the repo root:
-    uv run python generate_funnel_data.py
+    PYTHONPATH=.:scripts uv run python scripts/generate_funnel_data.py
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DATA_PATH = Path(__file__).resolve().parent / "data" / "volta_funnel_data.csv"
+DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "volta_funnel_data.csv"
 SEED = 42
 WINDOW_DAYS = 28
 

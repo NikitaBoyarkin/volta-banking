@@ -171,8 +171,10 @@ def section_setup(df: pd.DataFrame) -> None:
     print_section("VOLTA NEOBANK — 45+ KYC DEEP-DIVE", blank=False)
     print(f"\nDataset shape: {df.shape}")
     print(f"Users: {len(df):,}")
-    print(f"Overall KYC completion: control {df[df['group']=='control']['kyc_completed'].mean()*100:.1f}% "
-          f"vs treatment {df[df['group']=='treatment']['kyc_completed'].mean()*100:.1f}%")
+    print(
+        f"Overall KYC completion: control {df[df['group'] == 'control']['kyc_completed'].mean() * 100:.1f}% "
+        f"vs treatment {df[df['group'] == 'treatment']['kyc_completed'].mean() * 100:.1f}%"
+    )
     print("\nAge mix:")
     for age in AGE_ORDER:
         n = int((df["age_group"] == age).sum())

@@ -32,6 +32,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
+src = ["scripts", "."]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "C4", "UP"]
@@ -51,25 +52,26 @@ ignore_missing_imports = true
 check_untyped_defs = false
 disallow_untyped_defs = false
 files = [
-    "volta_churn_prediction.py",
-    "volta_rfm_analysis.py",
-    "volta_clv_modeling.py",
-    "volta_attribution.py",
-    "volta_anomaly_detection.py",
-    "volta_spend_analysis.py",
-    "volta_cs_churn.py",
-    "volta_nps_trends.py",
-    "volta_jtbd_mapping.py",
-    "volta_unit_economics.py",
-    "volta_premium_upsell.py",
-    "volta_kyc_deep_dive.py",
+    "scripts/volta_churn_prediction.py",
+    "scripts/volta_rfm_analysis.py",
+    "scripts/volta_clv_modeling.py",
+    "scripts/volta_attribution.py",
+    "scripts/volta_anomaly_detection.py",
+    "scripts/volta_spend_analysis.py",
+    "scripts/volta_cs_churn.py",
+    "scripts/volta_nps_trends.py",
+    "scripts/volta_jtbd_mapping.py",
+    "scripts/volta_unit_economics.py",
+    "scripts/volta_premium_upsell.py",
+    "scripts/volta_kyc_deep_dive.py",
+    "scripts/volta_referral_segments.py",
     "utils/common.py",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=utils --cov-report=term-missing"
+pythonpath = [".", "scripts"]
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=utils --cov-report=term-missing"
 
 [tool.coverage.run]
 # utils/pdf_processor.py and utils/report_generator.py are legacy/speculative

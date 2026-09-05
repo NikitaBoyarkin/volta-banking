@@ -6,26 +6,29 @@
 setup:
 	uv sync --all-groups
 
+# Scripts live in scripts/; utils/ stays at repo root, so both roots go on PYTHONPATH.
+PY := PYTHONPATH=.:scripts uv run python
+
 # Regenerate all synthetic datasets (seeded, reproducible)
 data:
-	uv run python generate_ab_data.py
-	uv run python generate_retention_data.py
-	uv run python generate_segmentation_data.py
-	uv run python generate_funnel_data.py
-	uv run python generate_churn_data.py
-	uv run python generate_rfm_data.py
-	uv run python generate_clv_data.py
-	uv run python generate_attribution_data.py
-	uv run python generate_anomaly_data.py
-	uv run python generate_transactions_data.py
-	uv run python generate_support_tickets_data.py
-	uv run python generate_nps_data.py
-	uv run python generate_feature_events_data.py
-	uv run python generate_campaigns_data.py
-	uv run python generate_referrals_data.py
-	uv run python generate_jtbd_data.py
-	uv run python generate_unit_economics_data.py
-	uv run python generate_premium_upsell_data.py
+	$(PY) scripts/generate_ab_data.py
+	$(PY) scripts/generate_retention_data.py
+	$(PY) scripts/generate_segmentation_data.py
+	$(PY) scripts/generate_funnel_data.py
+	$(PY) scripts/generate_churn_data.py
+	$(PY) scripts/generate_rfm_data.py
+	$(PY) scripts/generate_clv_data.py
+	$(PY) scripts/generate_attribution_data.py
+	$(PY) scripts/generate_anomaly_data.py
+	$(PY) scripts/generate_transactions_data.py
+	$(PY) scripts/generate_support_tickets_data.py
+	$(PY) scripts/generate_nps_data.py
+	$(PY) scripts/generate_feature_events_data.py
+	$(PY) scripts/generate_campaigns_data.py
+	$(PY) scripts/generate_referrals_data.py
+	$(PY) scripts/generate_jtbd_data.py
+	$(PY) scripts/generate_unit_economics_data.py
+	$(PY) scripts/generate_premium_upsell_data.py
 
 test:
 	uv run pytest
@@ -40,7 +43,7 @@ type:
 	uv run mypy
 
 notebooks:
-	uv run python build_notebooks.py
+	$(PY) scripts/build_notebooks.py
 
 all: data test lint type
 	@echo "All checks passed."

@@ -4,7 +4,7 @@ Creates `notebooks/01_funnel.ipynb` .. `04_segmentation.ipynb`, each with a
 markdown intro and a single code cell that runs the module's `main()`. Uses
 `nbconvert --execute` so outputs are embedded (an "executed notebook").
 
-Run:  uv run python build_notebooks.py
+Run:  uv run python scripts/build_notebooks.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ PROJECTS = [
     ("04_segmentation", "volta_segmentation", "User Segmentation — who are the users?"),
 ]
 
-NOTEBOOK_DIR = Path(__file__).resolve().parent / "notebooks"
+NOTEBOOK_DIR = Path(__file__).resolve().parent.parent / "notebooks"
 TIMEOUT_SECONDS = 600
 
 
