@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import add_chart_context, save_chart
 
 SEGMENT_ORDER = [
     "travelers",
@@ -174,6 +175,65 @@ def plot_sensitivity(sens: pd.DataFrame, out: Path) -> Path:
     return out
 
 
+def plot_fx_break_even(out: Path) -> Path:
+    """Waterfall of revenue, cost, and margin for a €100 FX transaction."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    amount = 100.0
+    revenue_items = {
+        "FX spread": FX_SPREAD * amount,
+        "Interchange": FX_INTERCHANGE * amount,
+    }
+    cost_items = {
+        "FX cost": -(FX_COST * amount),
+        "Processing / support": -FX_OTHER_COST,
+    }
+    net_margin = sum(revenue_items.values()) + sum(cost_items.values())
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    items = list(revenue_items.keys()) + list(cost_items.keys()) + ["Net margin"]
+    values = list(revenue_items.values()) + list(cost_items.values()) + [net_margin]
+    colors = ["#36B37E", "#36B37E", "#FF5630", "#FF5630", "#4C9AFF"]
+    x = np.arange(len(items))
+    bars = ax.bar(x, values, color=colors, edgecolor="#333333", linewidth=0.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels(items, rotation=15, ha="right")
+    ax.set_ylabel("€ per €100 FX transaction")
+    ax.axhline(0, color="white", linewidth=0.8)
+
+    for bar, v in zip(bars, values, strict=True):
+        offset = 0.15 if v >= 0 else -0.15
+        va = "bottom" if v >= 0 else "top"
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + offset,
+            f"€{v:+.2f}",
+            ha="center",
+            va=va,
+            fontsize=10,
+            fontweight="bold",
+        )
+
+    be_cost = break_even_fx_cost()
+    be_spread = break_even_spread()
+    add_chart_context(
+        fig,
+        title="Traveler FX Transaction — Break-even Waterfall",
+        description="Revenue and cost components of a single €100 FX transaction for the traveler segment.",
+        findings=[
+            f"Net margin is €{net_margin:+.2f} per €100 FX tx — travelers lose money on every transaction.",
+            f"Break-even requires FX cost to drop from 1.00% to {be_cost:.2f}% (negotiate interbank rates).",
+            f"Alternative: raise spread from 0.40% to {be_spread:.2f}% — but this breaks the 'honest rate' job.",
+            "Don't scale travelers before fixing unit economics; the loss grows linearly with volume.",
+        ],
+    )
+    return save_chart(fig, out)
+
+
 # ── Sections ─────────────────────────────────────────────────────────────────
 def section_setup(df: pd.DataFrame) -> None:
     print_section("VOLTA NEOBANK — TRAVELER UNIT ECONOMICS", blank=False)
@@ -227,6 +287,16 @@ def section_break_even() -> None:
     print("  The traveler's core job is 'honest rate' — raising the spread to 0.85%")
     print("  (2.1× current) breaks the value proposition. The lever is FX cost:")
     print("  negotiate interbank rates / hedge, not the customer-facing spread.")
+
+
+def section_fx_break_even_chart() -> Path:
+    """T4: FX transaction break-even waterfall PNG."""
+    print_section("FX BREAK-EVEN WATERFALL CHART")
+    out = OUTPUT_DIR / "traveler_fx_break_even.png"
+    plot_fx_break_even(out)
+    print(f"\nSaved: {out.name}")
+    print("  Revenue/cost waterfall for a €100 FX transaction.")
+    return out
 
 
 def section_sensitivity(sens: pd.DataFrame, out: Path) -> None:
@@ -283,6 +353,7 @@ def main() -> None:
     section_traveler_deep_dive(margin_by_type, fx_share)
 
     section_break_even()
+    section_fx_break_even_chart()
 
     sens = sensitivity(df)
     out = OUTPUT_DIR / "traveler_unit_economics_sensitivity.png"

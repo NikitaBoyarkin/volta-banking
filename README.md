@@ -176,21 +176,28 @@ All charts regenerate into `outputs/` when the scripts run.
 **Onboarding funnel** (Project 1)
 ![Main funnel](outputs/viz1_main_funnel.png)
 ![Funnel heatmap by segment](outputs/viz4_funnel_heatmap.png)
+![Funnel waterfall — absolute drop-off](outputs/viz5_funnel_waterfall.png)
 
-**A/B test power curve** (Project 2)
+**A/B test** (Project 2)
 ![Power vs MDE](outputs/ab_power_curve.png)
+![Conversion comparison with CI](outputs/ab_conversion_comparison.png)
 
-**Cohort retention heatmap** (Project 3)
+**Retention & cohorts** (Project 3)
 ![Cohort heatmap](outputs/cohort_heatmap.png)
+![Retention curves Free vs Premium](outputs/retention_curves_free_vs_premium.png)
 
 **Segmentation** (Project 4)
 ![PCA scatter](outputs/segmentation_pca_scatter.png)
+![Segment Pareto chart](outputs/segmentation_pareto.png)
 
 **Churn drivers** (Project 5)
 ![Churn feature importance](outputs/churn_feature_importance.png)
 
 **RFM segments** (Project 6)
 ![RFM heatmap](outputs/rfm_heatmap.png)
+
+**Traveler unit economics** (Project 14)
+![FX break-even waterfall](outputs/traveler_fx_break_even.png)
 
 **Referral conversion by segment** (Project 17)
 ![Referral conversion](outputs/referral_conversion_by_segment.png)

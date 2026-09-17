@@ -1,4 +1,5 @@
-# Pre-commit hooks — ruff + pytest before every commit.
+# Pre-commit hooks — fast lint/format checks before every commit.
+# Full test suite: uv run pytest
 # Install once with:  uv run pre-commit install
 # Run on all files with: uv run pre-commit run --all-files
 repos:
@@ -8,12 +9,3 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-
-  - repo: local
-    hooks:
-      - id: pytest
-        name: pytest
-        entry: uv run pytest
-        language: system
-        pass_filenames: false
-        always_run: true

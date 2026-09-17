@@ -33,6 +33,7 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import add_chart_context, save_chart
 
 KMEANS_SEED = 42
 
@@ -330,6 +331,61 @@ def plot_segmentation(
     return paths
 
 
+def plot_segment_pareto(seg_summary: pd.DataFrame, out: Path) -> Path:
+    """Revenue-share bar chart + cumulative line (Pareto) by segment."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    order = seg_summary.sort_values("total_monthly_rev", ascending=False)
+    segments = order.index.tolist()
+    rev_share = (order["total_monthly_rev"] / order["total_monthly_rev"].sum() * 100).values
+    cum_rev = np.cumsum(rev_share)
+
+    fig, ax1 = plt.subplots(figsize=(10, 5.5))
+    x = np.arange(len(segments))
+    bars = ax1.bar(x, rev_share, color="#4C9AFF", edgecolor="#333333", linewidth=0.5)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(segments, rotation=15, ha="right")
+    ax1.set_ylabel("Revenue share %")
+
+    for bar, v in zip(bars, rev_share, strict=True):
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 1,
+            f"{v:.0f}%",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+        )
+
+    ax2 = ax1.twinx()
+    ax2.plot(x, cum_rev, color="#FFAB4C", marker="o", linewidth=2, label="Cumulative %")
+    ax2.axhline(80, color="#36B37E", linestyle="--", alpha=0.7, label="80% revenue")
+    ax2.set_ylabel("Cumulative revenue %")
+    ax2.set_ylim(0, 105)
+    ax2.legend(loc="lower right")
+
+    idx80 = int(np.argmax(cum_rev >= 80))
+    users_to_80 = (order["n_users"].cumsum().iloc[idx80] / order["n_users"].sum() * 100).round(0)
+
+    add_chart_context(
+        fig,
+        title="Segment Revenue Concentration (Pareto)",
+        description="Each segment's share of total monthly revenue plus the cumulative contribution curve.",
+        findings=[
+            f"'{segments[0]}' alone drives {rev_share[0]:.0f}% of revenue while being {order['n_users'].iloc[0] / order['n_users'].sum() * 100:.0f}% of users.",
+            f"{users_to_80:.0f}% of users generate ≥80% of revenue (reached at '{segments[idx80]}').",
+            "Revenue is highly concentrated: protect Power Users and upsell Growth/Casual segments.",
+            f"Dormant users still contribute {rev_share[-1]:.0f}% — win-back campaigns have measurable upside.",
+        ],
+    )
+    return save_chart(fig, out)
+
+
 def assign_segment_names(df: pd.DataFrame, optimal_k: int) -> tuple[pd.DataFrame, dict[int, str]]:
     """Map cluster IDs → revenue-ranked segment names. Guarded: the name list
     must cover the chosen K, and every cluster must receive a name."""
@@ -606,6 +662,16 @@ def section_pareto(seg_summary: pd.DataFrame) -> None:
     pu_pct = cum_users[0]
     pr_pct = cum_rev[0]
     print(f"→ Top segment alone: {pu_pct:.0f}% of users → {pr_pct:.0f}% of revenue.")
+
+
+def section_segment_pareto_chart(seg_summary: pd.DataFrame) -> Path:
+    """S4: segment Pareto PNG."""
+    print_section("SEGMENT PARETO CHART")
+    out = OUTPUT_DIR / "segmentation_pareto.png"
+    plot_segment_pareto(seg_summary, out)
+    print(f"\nSaved: {out.name}")
+    print("  Bars = segment revenue share; line = cumulative revenue.")
+    return out
 
 
 def section_churn(seg_summary: pd.DataFrame) -> None:
@@ -957,6 +1023,7 @@ def main() -> None:
     section_insight_premium(seg_summary)
     section_revenue_concentration(seg_summary)
     section_pareto(seg_summary)
+    section_segment_pareto_chart(seg_summary)
     section_churn(seg_summary)
     section_monetization(seg_summary)
     section_strategy(seg_summary)

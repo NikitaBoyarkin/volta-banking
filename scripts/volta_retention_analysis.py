@@ -31,6 +31,7 @@ import pandas as pd
 from scipy import stats
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import add_chart_context, save_chart
 
 FIX_CUTOFF = "2024-09"  # cohorts >= this date are "post-fix"
 
@@ -136,6 +137,81 @@ def plot_cohort_heatmap(df: pd.DataFrame, out: Path) -> Path:
     fig.savefig(out, dpi=130, bbox_inches="tight")
     plt.close(fig)
     return out
+
+
+def plot_retention_curves(out: Path) -> Path:
+    """Free vs Premium retention curves (post-fix) with pre-fix references."""
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    months = np.arange(12)
+    labels = [f"M{i}" for i in months]
+
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    ax.plot(
+        months,
+        np.asarray(PARAMS["free_pre_curve"]) * 100,
+        "--",
+        color="#4C9AFF",
+        alpha=0.5,
+        label="Free pre-fix",
+    )
+    ax.plot(
+        months,
+        np.asarray(PARAMS["free_post_curve"]) * 100,
+        "o-",
+        color="#4C9AFF",
+        linewidth=2,
+        label="Free post-fix",
+    )
+    ax.plot(
+        months,
+        np.asarray(PARAMS["premium_pre_curve"]) * 100,
+        "--",
+        color="#36B37E",
+        alpha=0.5,
+        label="Premium pre-fix",
+    )
+    ax.plot(
+        months,
+        np.asarray(PARAMS["premium_post_curve"]) * 100,
+        "s-",
+        color="#36B37E",
+        linewidth=2,
+        label="Premium post-fix",
+    )
+    ax.set_xticks(months)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("Retention %")
+    ax.set_xlabel("Month since activation")
+    ax.set_ylim(0, 105)
+    ax.legend(loc="upper right")
+    ax.grid(True, alpha=0.2)
+
+    free_m6_post = float(PARAMS["free_post_curve"][6]) * 100
+    prem_m6_post = float(PARAMS["premium_post_curve"][6]) * 100
+    add_chart_context(
+        fig,
+        title="Retention Curves — Free vs Premium Plans",
+        description="Percentage of users still active each month, comparing Free and Premium plans before/after the KYC fix.",
+        findings=[
+            f"Premium users retain far better: M6 = {prem_m6_post:.0f}% vs Free M6 = {free_m6_post:.0f}%.",
+            f"Post-fix KYC improvement lifts both curves (Free +{(PARAMS['free_post_curve'][6] - PARAMS['free_pre_curve'][6]) * 100:.0f}pp at M6).",
+            f"Premium LTV is {ltvs_ratio():.1f}× Free — driven by both higher ARPU and higher retention.",
+            "Strategy: target premium upgrades for high-intent Free users in months 1–2.",
+        ],
+    )
+    return save_chart(fig, out)
+
+
+def ltvs_ratio() -> float:
+    """Post-fix Premium/Free LTV ratio for chart annotations."""
+    arpu_free = float(PARAMS["monthly_arpu_free"])
+    arpu_prem = float(PARAMS["monthly_arpu_premium"])
+    ltv_free = compute_ltv(PARAMS["free_post_curve"], arpu_free)
+    ltv_prem = compute_ltv(PARAMS["premium_post_curve"], arpu_prem)
+    return ltv_prem / ltv_free if ltv_free else 0.0
 
 
 # ── Sprint 1: R2 churn curve ────────────────────────────────────────────────
@@ -480,6 +556,16 @@ def section_cohort_heatmap(df: pd.DataFrame) -> Path:
     return out
 
 
+def section_retention_curves() -> Path:
+    """R4: Free vs Premium retention curves PNG."""
+    print_section("RETENTION CURVES — FREE VS PREMIUM")
+    out = OUTPUT_DIR / "retention_curves_free_vs_premium.png"
+    plot_retention_curves(out)
+    print(f"\nSaved: {out.name}")
+    print("  Compares Free and Premium retention before/after the KYC fix.")
+    return out
+
+
 def section_churn_curve(df: pd.DataFrame) -> pd.DataFrame:
     """R2: churn = 1 − retention, pre vs post, by month."""
     print_section("CHURN CURVE (1 − retention, pre vs post)")
@@ -628,6 +714,7 @@ def main() -> None:
     test = section_stat_test(df)
     section_bootstrap_ci(df)
     section_cohort_heatmap(df)
+    section_retention_curves()
     section_churn_curve(df)
     section_ltv_bootstrap_ci(df, ltvs)
     section_summary(ltvs, test)

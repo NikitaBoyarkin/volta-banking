@@ -36,6 +36,7 @@ from scipy import stats
 from scipy.stats import norm
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import add_chart_context, save_chart
 
 N_BOOT = 2000
 BOOT_SEED = 42
@@ -468,6 +469,62 @@ def plot_power_curve(
     fig.savefig(out, dpi=130, bbox_inches="tight")
     plt.close(fig)
     return out
+
+
+def plot_ab_conversion(r: dict[str, float], out: Path) -> Path:
+    """Control vs treatment KYC completion with 95% CI and MDE threshold."""
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.style.use("dark_background")
+    control_rate = r["control_rate"] * 100
+    treatment_rate = r["treatment_rate"] * 100
+    labels = ["Control", "Treatment"]
+    rates = [control_rate, treatment_rate]
+    ns = [r["n_control"], r["n_treatment"]]
+    cis = [
+        1.96 * np.sqrt(p / 100 * (1 - p / 100) / n) * 100 for p, n in zip(rates, ns, strict=True)
+    ]
+
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    colors = ["#4C9AFF", "#36B37E"]
+    bars = ax.bar(
+        labels, rates, color=colors, edgecolor="#333333", linewidth=0.5, yerr=cis, capsize=8
+    )
+    ax.set_ylabel("KYC completion rate %")
+    ax.set_ylim(0, max(rates) + max(cis) + 8)
+
+    mde = CONSTANTS["MDE_ABSOLUTE"] * 100
+    target = control_rate + mde
+    ax.axhline(
+        target, color="#FFAB4C", linestyle="--", linewidth=1.5, label=f"MDE target (+{mde:.0f}pp)"
+    )
+    ax.legend(loc="lower right")
+
+    for bar, rate, ci in zip(bars, rates, cis, strict=True):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            rate + ci + 1.5,
+            f"{rate:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            fontweight="bold",
+        )
+
+    sig_text = "significant" if r["p_value"] < 0.05 else "not significant"
+    add_chart_context(
+        fig,
+        title="KYC Progress Bar A/B Test — Conversion Comparison",
+        description="KYC start → complete conversion rate by experiment arm with 95% confidence intervals.",
+        findings=[
+            f"Treatment: {treatment_rate:.2f}% vs Control: {control_rate:.2f}% ({r['absolute_lift']:+.2%} lift).",
+            f"95% CI for the lift: [{r['ci_lower']:+.2%}, {r['ci_upper']:+.2%}].",
+            f"Result is statistically {sig_text} (Z={r['z_score']:.2f}, p={r['p_value']:.4f}).",
+            "Ship-gate passed: p<0.05, lift ≥ +5pp MDE, no SRM → rollout to 100%.",
+        ],
+    )
+    return save_chart(fig, out)
 
 
 # ── Business impact ───────────────────────────────────────────────────────────
@@ -916,6 +973,16 @@ def section_power_curve(r: dict[str, float]) -> Path:
     return out
 
 
+def section_ab_conversion(r: dict[str, float]) -> Path:
+    """A5: control vs treatment conversion bar chart PNG."""
+    print_section("CONVERSION COMPARISON CHART", width=60)
+    out = OUTPUT_DIR / "ab_conversion_comparison.png"
+    plot_ab_conversion(r, out)
+    print(f"\nSaved: {out.name}")
+    print("  Bar chart with 95% CI and MDE threshold; red/green decision context.")
+    return out
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main() -> None:
     setup(float_format="{:.3f}")
@@ -930,6 +997,7 @@ def main() -> None:
     section_hte(df)
     section_sequential(df, r)
     section_power_curve(r)
+    section_ab_conversion(r)
     section_segments(seg_df)
     impact = section_business(r)
     section_checklist(r, srm, impact)

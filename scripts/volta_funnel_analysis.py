@@ -35,6 +35,7 @@ import seaborn as sns
 from scipy import stats
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import add_chart_context, save_chart
 
 # ── Funnel definition ────────────────────────────────────────────────────────
 FUNNEL_STEPS = [
@@ -450,6 +451,51 @@ def plot_segments(age_kyc: pd.DataFrame, device_table: pd.DataFrame, out: Path) 
     plt.close(fig)
 
 
+def plot_funnel_waterfall(metrics: dict[str, list[float]], out: Path) -> Path:
+    """Absolute user drop-off at each funnel transition (waterfall style)."""
+    transitions = [f"{a} → {b}" for a, b in zip(FUNNEL_LABELS[:-1], FUNNEL_LABELS[1:], strict=True)]
+    drop_offs = metrics["drop_off"][1:]
+
+    max_idx = int(drop_offs.index(max(drop_offs)))
+    biggest_abs_transition = transitions[max_idx]
+    biggest_abs_drop = drop_offs[max_idx]
+
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    colors = ["#FF5630" if i == max_idx else "#FFAB4C" for i, _ in enumerate(drop_offs)]
+    bars = ax.bar(transitions, drop_offs, color=colors, edgecolor="#333333", linewidth=0.5)
+    ax.set_ylabel("Users lost")
+    plt.setp(ax.get_xticklabels(), rotation=25, ha="right")
+
+    for bar, d in zip(bars, drop_offs, strict=True):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            height + max(drop_offs) * 0.02,
+            f"{d:,}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+        )
+
+    total_in = metrics["counts"][0]
+    ax.axhline(total_in * 0.05, color="#4C9AFF", linestyle="--", alpha=0.5, label="5% of installs")
+    ax.legend(loc="upper right")
+
+    add_chart_context(
+        fig,
+        title="Onboarding Funnel — Absolute User Drop-off",
+        description="Each bar shows how many users are lost between two consecutive funnel steps.",
+        findings=[
+            f"{biggest_abs_transition} loses the most users in absolute terms ({biggest_abs_drop:,}).",
+            f"KYC Complete has the lowest step-conversion ({metrics['step_conv'][3]:.1f}%), making it the biggest relative bottleneck.",
+            f"Only {metrics['counts'][-1]:,} of {metrics['counts'][0]:,} installs ({metrics['overall_conv'][-1]:.1f}%) complete a first transaction.",
+            "Priority: fix KYC UX first (highest relative drop), then simplify the biggest absolute loss stage.",
+        ],
+    )
+    return save_chart(fig, out)
+
+
 # ── Narrative section printers ──────────────────────────────────────────────
 def section_data_quality(df: pd.DataFrame) -> dict[str, pd.Series]:
     print_section("VOLTA NEOBANK — ONBOARDING FUNNEL ANALYSIS", blank=False)
@@ -686,6 +732,16 @@ def section_funnel_heatmap(df: pd.DataFrame) -> Path:
     return out
 
 
+def section_funnel_waterfall(metrics: dict[str, list[float]]) -> Path:
+    """F4: absolute drop-off waterfall PNG."""
+    print_section("FUNNEL WATERFALL — ABSOLUTE DROP-OFF")
+    out = OUTPUT_DIR / "viz5_funnel_waterfall.png"
+    plot_funnel_waterfall(metrics, out)
+    print(f"\nSaved: {out.name}")
+    print("  Bars = users lost at each transition; red bar = biggest absolute drop.")
+    return out
+
+
 def _print_chi_square(r: dict[str, float]) -> None:
     print(f"\n{r['a_name'].capitalize()}:")
     print(f"  Activated: {r['a_activated']:,} / {r['a_total']:,}")
@@ -881,6 +937,7 @@ def main() -> None:
     section_step_segment_tests(df)
     section_time_to_convert(df)
     section_funnel_heatmap(df)
+    section_funnel_waterfall(metrics)
     section_findings(
         metrics, drops, revenue_per_10k, youngest_kyc, oldest_kyc, ios_advantage, referral_diff
     )
@@ -891,7 +948,10 @@ def main() -> None:
     plot_main_funnel(metrics, OUTPUT_DIR / "viz1_main_funnel.png")
     plot_channel_breakdown(channel_table, transitions, OUTPUT_DIR / "viz2_channel_breakdown.png")
     plot_segments(age_kyc, device_table, OUTPUT_DIR / "viz3_segments.png")
-    print("\nSaved: viz1_main_funnel.png, viz2_channel_breakdown.png, viz3_segments.png")
+    plot_funnel_waterfall(metrics, OUTPUT_DIR / "viz5_funnel_waterfall.png")
+    print(
+        "\nSaved: viz1_main_funnel.png, viz2_channel_breakdown.png, viz3_segments.png, viz5_funnel_waterfall.png"
+    )
 
     _next_steps(drops, metrics["overall_conv"][-1])
 
