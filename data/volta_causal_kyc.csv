@@ -70965,7 +70965,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 70964,2024-09,20,in_app_kyc,1,1,35-44,android,8.05,1,0,0
 70965,2024-09,20,in_app_kyc,1,1,45+,android,11.941,0,0,0
 70966,2024-09,20,in_app_kyc,1,1,35-44,ios,10.574,0,0,1
-70967,2024-09,20,in_app_kyc,1,1,35-44,android,7.142,1,1,1
+70967,2024-09,20,in_app_kyc,1,1,35-44,android,7.142,0,1,1
 70968,2024-09,20,in_app_kyc,1,1,45+,android,3.077,0,0,1
 70969,2024-09,20,in_app_kyc,1,1,35-44,web,0.815,0,0,0
 70970,2024-09,20,in_app_kyc,1,1,25-34,android,11.884,1,1,0
@@ -70979,7 +70979,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 70978,2024-09,20,in_app_kyc,1,1,35-44,android,10.32,0,1,0
 70979,2024-09,20,in_app_kyc,1,1,35-44,ios,8.013,1,1,1
 70980,2024-09,20,in_app_kyc,1,1,35-44,android,10.265,1,0,1
-70981,2024-09,20,in_app_kyc,1,1,25-34,web,11.287,1,1,1
+70981,2024-09,20,in_app_kyc,1,1,25-34,web,11.287,0,1,1
 70982,2024-09,20,in_app_kyc,1,1,18-24,web,8.531,0,1,1
 70983,2024-09,20,in_app_kyc,1,1,45+,ios,8.127,1,1,0
 70984,2024-09,20,in_app_kyc,1,1,35-44,ios,7.085,0,1,1
@@ -70997,7 +70997,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 70996,2024-09,20,in_app_kyc,1,1,25-34,web,7.863,1,0,1
 70997,2024-09,20,in_app_kyc,1,1,35-44,ios,10.976,0,0,0
 70998,2024-09,20,in_app_kyc,1,1,45+,ios,6.618,0,0,0
-70999,2024-09,20,in_app_kyc,1,1,35-44,ios,10.883,1,0,0
+70999,2024-09,20,in_app_kyc,1,1,35-44,ios,10.883,1,0,1
 71000,2024-09,20,in_app_kyc,1,1,45+,android,9.831,0,1,0
 71001,2024-09,20,in_app_kyc,1,1,25-34,android,5.036,1,0,1
 71002,2024-09,20,in_app_kyc,1,1,35-44,ios,8.139,0,1,1
@@ -71237,7 +71237,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 71236,2024-09,20,in_app_kyc,1,1,35-44,web,9.482,1,1,0
 71237,2024-09,20,in_app_kyc,1,1,45+,android,9.358,0,0,1
 71238,2024-09,20,in_app_kyc,1,1,18-24,ios,6.77,1,1,1
-71239,2024-09,20,in_app_kyc,1,1,25-34,ios,7.658,1,1,1
+71239,2024-09,20,in_app_kyc,1,1,25-34,ios,7.658,0,1,1
 71240,2024-09,20,in_app_kyc,1,1,35-44,web,12.768,1,0,0
 71241,2024-09,20,in_app_kyc,1,1,35-44,web,9.263,0,1,1
 71242,2024-09,20,in_app_kyc,1,1,45+,ios,9.223,1,1,1
@@ -71348,7 +71348,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 71347,2024-09,20,in_app_kyc,1,1,35-44,ios,11.695,0,1,0
 71348,2024-09,20,in_app_kyc,1,1,35-44,ios,9.902,1,1,1
 71349,2024-09,20,in_app_kyc,1,1,35-44,web,12.067,1,1,1
-71350,2024-09,20,in_app_kyc,1,1,45+,web,5.522,0,1,0
+71350,2024-09,20,in_app_kyc,1,1,45+,web,5.522,0,1,1
 71351,2024-09,20,in_app_kyc,1,1,45+,web,5.414,1,1,0
 71352,2024-09,20,in_app_kyc,1,1,25-34,web,8.505,0,1,1
 71353,2024-09,20,in_app_kyc,1,1,25-34,web,5.836,1,1,0
@@ -71880,7 +71880,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 71879,2024-09,20,in_app_kyc,1,1,45+,web,10.888,0,1,0
 71880,2024-09,20,in_app_kyc,1,1,18-24,web,6.542,0,0,1
 71881,2024-09,20,in_app_kyc,1,1,25-34,web,5.238,1,0,1
-71882,2024-09,20,in_app_kyc,1,1,18-24,ios,7.569,1,1,1
+71882,2024-09,20,in_app_kyc,1,1,18-24,ios,7.569,0,0,0
 71883,2024-09,20,in_app_kyc,1,1,35-44,android,8.394,1,0,1
 71884,2024-09,20,in_app_kyc,1,1,35-44,web,7.245,0,0,1
 71885,2024-09,20,in_app_kyc,1,1,45+,android,9.455,1,1,0
@@ -71925,7 +71925,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 71924,2024-09,20,in_app_kyc,1,1,25-34,ios,7.346,1,1,0
 71925,2024-09,20,in_app_kyc,1,1,25-34,web,8.269,1,1,0
 71926,2024-09,20,in_app_kyc,1,1,35-44,web,9.362,0,1,1
-71927,2024-09,20,in_app_kyc,1,1,35-44,web,8.657,1,1,0
+71927,2024-09,20,in_app_kyc,1,1,35-44,web,8.657,0,1,0
 71928,2024-09,20,in_app_kyc,1,1,25-34,web,5.879,1,1,1
 71929,2024-09,20,in_app_kyc,1,1,45+,web,9.64,1,1,0
 71930,2024-09,20,in_app_kyc,1,1,45+,web,5.952,1,1,1
@@ -71971,7 +71971,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 71970,2024-09,20,in_app_kyc,1,1,25-34,android,8.497,1,0,0
 71971,2024-09,20,in_app_kyc,1,1,18-24,web,8.805,0,1,1
 71972,2024-09,20,in_app_kyc,1,1,45+,android,5.214,0,1,1
-71973,2024-09,20,in_app_kyc,1,1,45+,ios,4.722,1,1,0
+71973,2024-09,20,in_app_kyc,1,1,45+,ios,4.722,1,1,1
 71974,2024-09,20,in_app_kyc,1,1,45+,web,6.324,1,0,0
 71975,2024-09,20,in_app_kyc,1,1,45+,web,8.669,0,0,0
 71976,2024-09,20,in_app_kyc,1,1,25-34,android,5.519,1,1,1
@@ -73812,7 +73812,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 73811,2024-10,21,in_app_kyc,1,1,25-34,web,1.203,1,0,0
 73812,2024-10,21,in_app_kyc,1,1,45+,web,8.196,0,1,0
 73813,2024-10,21,in_app_kyc,1,1,35-44,web,12.722,1,1,1
-73814,2024-10,21,in_app_kyc,1,1,45+,web,8.766,1,0,0
+73814,2024-10,21,in_app_kyc,1,1,45+,web,8.766,0,0,0
 73815,2024-10,21,in_app_kyc,1,1,45+,ios,5.326,0,1,0
 73816,2024-10,21,in_app_kyc,1,1,45+,ios,6.467,0,0,0
 73817,2024-10,21,in_app_kyc,1,1,35-44,android,3.098,1,1,1
@@ -74118,12 +74118,12 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74117,2024-10,21,in_app_kyc,1,1,18-24,web,3.63,1,1,1
 74118,2024-10,21,in_app_kyc,1,1,25-34,ios,9.321,1,1,1
 74119,2024-10,21,in_app_kyc,1,1,35-44,ios,5.87,0,0,0
-74120,2024-10,21,in_app_kyc,1,1,35-44,ios,10.26,1,1,0
+74120,2024-10,21,in_app_kyc,1,1,35-44,ios,10.26,0,0,0
 74121,2024-10,21,in_app_kyc,1,1,25-34,web,6.487,0,1,1
 74122,2024-10,21,in_app_kyc,1,1,18-24,ios,8.837,1,0,1
 74123,2024-10,21,in_app_kyc,1,1,45+,ios,11.447,0,1,1
 74124,2024-10,21,in_app_kyc,1,1,25-34,web,10.193,0,1,1
-74125,2024-10,21,in_app_kyc,1,1,45+,android,7.558,1,1,0
+74125,2024-10,21,in_app_kyc,1,1,45+,android,7.558,0,1,0
 74126,2024-10,21,in_app_kyc,1,1,45+,web,11.71,1,1,0
 74127,2024-10,21,in_app_kyc,1,1,45+,ios,7.657,1,0,0
 74128,2024-10,21,in_app_kyc,1,1,45+,android,5.623,0,0,0
@@ -74229,7 +74229,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74228,2024-10,21,in_app_kyc,1,1,35-44,web,5.471,1,1,1
 74229,2024-10,21,in_app_kyc,1,1,18-24,web,9.626,0,1,0
 74230,2024-10,21,in_app_kyc,1,1,45+,web,6.842,1,1,0
-74231,2024-10,21,in_app_kyc,1,1,25-34,web,4.427,1,0,1
+74231,2024-10,21,in_app_kyc,1,1,25-34,web,4.427,0,0,1
 74232,2024-10,21,in_app_kyc,1,1,45+,web,8.076,1,1,0
 74233,2024-10,21,in_app_kyc,1,1,18-24,ios,7.54,0,1,0
 74234,2024-10,21,in_app_kyc,1,1,45+,ios,8.296,0,1,1
@@ -74341,7 +74341,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74340,2024-10,21,in_app_kyc,1,1,35-44,android,14.443,0,0,0
 74341,2024-10,21,in_app_kyc,1,1,45+,web,4.24,1,1,1
 74342,2024-10,21,in_app_kyc,1,1,35-44,web,12.018,1,1,0
-74343,2024-10,21,in_app_kyc,1,1,25-34,ios,10.179,1,0,1
+74343,2024-10,21,in_app_kyc,1,1,25-34,ios,10.179,0,0,1
 74344,2024-10,21,in_app_kyc,1,1,35-44,ios,9.923,0,1,0
 74345,2024-10,21,in_app_kyc,1,1,35-44,web,6.832,1,1,0
 74346,2024-10,21,in_app_kyc,1,1,25-34,web,6.117,0,1,1
@@ -74401,7 +74401,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74400,2024-10,21,in_app_kyc,1,1,18-24,web,8.99,1,1,1
 74401,2024-10,21,in_app_kyc,1,1,35-44,ios,1.862,0,0,1
 74402,2024-10,21,in_app_kyc,1,1,25-34,web,8.818,0,1,1
-74403,2024-10,21,in_app_kyc,1,1,35-44,web,11.203,1,0,1
+74403,2024-10,21,in_app_kyc,1,1,35-44,web,11.203,0,0,0
 74404,2024-10,21,in_app_kyc,1,1,18-24,web,12.166,1,1,1
 74405,2024-10,21,in_app_kyc,1,1,35-44,web,10.714,0,0,1
 74406,2024-10,21,in_app_kyc,1,1,45+,android,13.289,1,1,0
@@ -74418,7 +74418,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74417,2024-10,21,in_app_kyc,1,1,45+,web,6.491,1,0,0
 74418,2024-10,21,in_app_kyc,1,1,25-34,web,9.281,1,1,0
 74419,2024-10,21,in_app_kyc,1,1,25-34,web,6.206,1,1,0
-74420,2024-10,21,in_app_kyc,1,1,25-34,android,2.693,1,1,1
+74420,2024-10,21,in_app_kyc,1,1,25-34,android,2.693,0,0,1
 74421,2024-10,21,in_app_kyc,1,1,45+,android,5.657,0,0,1
 74422,2024-10,21,in_app_kyc,1,1,35-44,android,7.003,0,1,0
 74423,2024-10,21,in_app_kyc,1,1,18-24,ios,11.681,0,0,0
@@ -74744,7 +74744,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74743,2024-10,21,in_app_kyc,1,1,25-34,web,3.978,1,1,0
 74744,2024-10,21,in_app_kyc,1,1,35-44,ios,5.485,0,0,0
 74745,2024-10,21,in_app_kyc,1,1,35-44,android,3.111,1,0,1
-74746,2024-10,21,in_app_kyc,1,1,45+,android,10.342,1,1,1
+74746,2024-10,21,in_app_kyc,1,1,45+,android,10.342,0,1,0
 74747,2024-10,21,in_app_kyc,1,1,35-44,android,10.259,0,1,0
 74748,2024-10,21,in_app_kyc,1,1,45+,android,8.949,1,0,0
 74749,2024-10,21,in_app_kyc,1,1,35-44,web,10.499,1,0,0
@@ -74752,7 +74752,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 74751,2024-10,21,in_app_kyc,1,1,25-34,ios,8.038,0,1,0
 74752,2024-10,21,in_app_kyc,1,1,25-34,android,8.387,1,1,0
 74753,2024-10,21,in_app_kyc,1,1,45+,ios,10.065,0,1,0
-74754,2024-10,21,in_app_kyc,1,1,45+,ios,10.058,1,1,1
+74754,2024-10,21,in_app_kyc,1,1,45+,ios,10.058,0,0,0
 74755,2024-10,21,in_app_kyc,1,1,35-44,web,12.403,0,0,0
 74756,2024-10,21,in_app_kyc,1,1,25-34,android,12.213,0,1,1
 74757,2024-10,21,in_app_kyc,1,1,45+,ios,6.596,0,1,0
@@ -75353,7 +75353,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 75352,2024-10,21,in_app_kyc,1,1,45+,web,7.489,0,1,0
 75353,2024-10,21,in_app_kyc,1,1,35-44,web,6.456,0,0,1
 75354,2024-10,21,in_app_kyc,1,1,45+,android,12.79,1,0,1
-75355,2024-10,21,in_app_kyc,1,1,35-44,web,13.99,1,1,0
+75355,2024-10,21,in_app_kyc,1,1,35-44,web,13.99,1,1,1
 75356,2024-10,21,in_app_kyc,1,1,18-24,ios,9.288,0,1,1
 75357,2024-10,21,in_app_kyc,1,1,45+,android,10.099,0,1,1
 75358,2024-10,21,in_app_kyc,1,1,25-34,android,11.408,1,1,0
@@ -75527,7 +75527,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 75526,2024-10,21,in_app_kyc,1,1,35-44,web,9.636,0,1,1
 75527,2024-10,21,in_app_kyc,1,1,45+,android,3.858,0,0,1
 75528,2024-10,21,in_app_kyc,1,1,25-34,ios,6.792,0,1,0
-75529,2024-10,21,in_app_kyc,1,1,25-34,android,6.628,1,1,0
+75529,2024-10,21,in_app_kyc,1,1,25-34,android,6.628,1,1,1
 75530,2024-10,21,in_app_kyc,1,1,45+,web,9.372,1,1,1
 75531,2024-10,21,in_app_kyc,1,1,25-34,android,9.28,1,1,0
 75532,2024-10,21,in_app_kyc,1,1,25-34,web,6.537,0,1,1
@@ -77077,7 +77077,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 77076,2024-11,22,in_app_kyc,1,1,45+,ios,7.86,0,0,0
 77077,2024-11,22,in_app_kyc,1,1,25-34,ios,7.037,1,1,0
 77078,2024-11,22,in_app_kyc,1,1,35-44,ios,6.687,0,0,0
-77079,2024-11,22,in_app_kyc,1,1,18-24,web,7.87,1,0,0
+77079,2024-11,22,in_app_kyc,1,1,18-24,web,7.87,0,0,0
 77080,2024-11,22,in_app_kyc,1,1,35-44,android,8.254,0,1,1
 77081,2024-11,22,in_app_kyc,1,1,45+,web,4.25,0,1,1
 77082,2024-11,22,in_app_kyc,1,1,25-34,web,8.422,1,1,0
@@ -78004,7 +78004,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78003,2024-11,22,in_app_kyc,1,1,45+,web,4.173,0,0,0
 78004,2024-11,22,in_app_kyc,1,1,35-44,android,11.497,0,0,1
 78005,2024-11,22,in_app_kyc,1,1,25-34,ios,13.366,1,1,1
-78006,2024-11,22,in_app_kyc,1,1,35-44,android,4.413,1,1,1
+78006,2024-11,22,in_app_kyc,1,1,35-44,android,4.413,0,1,0
 78007,2024-11,22,in_app_kyc,1,1,45+,ios,8.248,1,1,1
 78008,2024-11,22,in_app_kyc,1,1,35-44,ios,10.455,1,1,0
 78009,2024-11,22,in_app_kyc,1,1,25-34,ios,6.174,1,0,1
@@ -78082,7 +78082,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78081,2024-11,22,in_app_kyc,1,1,35-44,ios,5.787,0,0,1
 78082,2024-11,22,in_app_kyc,1,1,35-44,web,2.983,1,0,1
 78083,2024-11,22,in_app_kyc,1,1,25-34,android,7.853,1,1,0
-78084,2024-11,22,in_app_kyc,1,1,35-44,android,13.325,1,1,0
+78084,2024-11,22,in_app_kyc,1,1,35-44,android,13.325,0,1,0
 78085,2024-11,22,in_app_kyc,1,1,25-34,ios,4.416,1,0,0
 78086,2024-11,22,in_app_kyc,1,1,35-44,android,11.917,0,1,1
 78087,2024-11,22,in_app_kyc,1,1,25-34,ios,4.148,1,1,0
@@ -78292,7 +78292,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78291,2024-11,22,in_app_kyc,1,1,25-34,ios,1.289,1,1,1
 78292,2024-11,22,in_app_kyc,1,1,35-44,android,7.943,1,1,1
 78293,2024-11,22,in_app_kyc,1,1,25-34,ios,3.376,0,1,1
-78294,2024-11,22,in_app_kyc,1,1,25-34,android,8.166,1,1,1
+78294,2024-11,22,in_app_kyc,1,1,25-34,android,8.166,0,1,0
 78295,2024-11,22,in_app_kyc,1,1,25-34,web,5.308,0,1,0
 78296,2024-11,22,in_app_kyc,1,1,25-34,web,1.066,0,1,0
 78297,2024-11,22,in_app_kyc,1,1,35-44,android,6.976,0,1,0
@@ -78310,7 +78310,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78309,2024-11,22,in_app_kyc,1,1,45+,ios,7.297,0,1,1
 78310,2024-11,22,in_app_kyc,1,1,45+,android,6.582,0,1,1
 78311,2024-11,22,in_app_kyc,1,1,25-34,web,9.341,1,1,0
-78312,2024-11,22,in_app_kyc,1,1,45+,android,6.346,1,1,1
+78312,2024-11,22,in_app_kyc,1,1,45+,android,6.346,0,1,1
 78313,2024-11,22,in_app_kyc,1,1,25-34,web,11.933,1,1,1
 78314,2024-11,22,in_app_kyc,1,1,25-34,ios,1.842,1,1,0
 78315,2024-11,22,in_app_kyc,1,1,35-44,ios,9.097,1,1,1
@@ -78563,7 +78563,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78562,2024-11,22,in_app_kyc,1,1,35-44,web,5.737,1,1,0
 78563,2024-11,22,in_app_kyc,1,1,35-44,web,8.323,0,0,0
 78564,2024-11,22,in_app_kyc,1,1,45+,android,11.712,1,1,0
-78565,2024-11,22,in_app_kyc,1,1,25-34,web,9.642,1,0,0
+78565,2024-11,22,in_app_kyc,1,1,25-34,web,9.642,1,1,0
 78566,2024-11,22,in_app_kyc,1,1,25-34,web,5.49,1,1,1
 78567,2024-11,22,in_app_kyc,1,1,35-44,web,5.601,1,1,1
 78568,2024-11,22,in_app_kyc,1,1,45+,ios,1.444,1,1,1
@@ -78686,7 +78686,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78685,2024-11,22,in_app_kyc,1,1,35-44,web,13.217,0,0,0
 78686,2024-11,22,in_app_kyc,1,1,35-44,ios,12.262,0,1,0
 78687,2024-11,22,in_app_kyc,1,1,25-34,ios,4.843,1,1,1
-78688,2024-11,22,in_app_kyc,1,1,18-24,android,8.798,1,0,0
+78688,2024-11,22,in_app_kyc,1,1,18-24,android,8.798,1,1,0
 78689,2024-11,22,in_app_kyc,1,1,25-34,ios,9.556,1,1,1
 78690,2024-11,22,in_app_kyc,1,1,45+,ios,6.984,1,0,0
 78691,2024-11,22,in_app_kyc,1,1,45+,web,8.281,1,0,0
@@ -78749,7 +78749,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 78748,2024-11,22,in_app_kyc,1,1,45+,ios,9.583,0,1,1
 78749,2024-11,22,in_app_kyc,1,1,45+,web,12.812,1,0,1
 78750,2024-11,22,in_app_kyc,1,1,45+,web,8.192,1,1,0
-78751,2024-11,22,in_app_kyc,1,1,45+,web,9.354,1,1,1
+78751,2024-11,22,in_app_kyc,1,1,45+,web,9.354,0,1,1
 78752,2024-11,22,in_app_kyc,1,1,35-44,ios,15.819,1,1,0
 78753,2024-11,22,in_app_kyc,1,1,35-44,android,10.499,1,0,1
 78754,2024-11,22,in_app_kyc,1,1,35-44,android,10.388,1,1,1
@@ -80560,7 +80560,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 80559,2024-12,23,in_app_kyc,1,1,25-34,ios,12.874,0,0,1
 80560,2024-12,23,in_app_kyc,1,1,45+,ios,7.419,1,1,0
 80561,2024-12,23,in_app_kyc,1,1,35-44,web,12.025,1,1,0
-80562,2024-12,23,in_app_kyc,1,1,35-44,web,8.472,1,1,1
+80562,2024-12,23,in_app_kyc,1,1,35-44,web,8.472,0,1,1
 80563,2024-12,23,in_app_kyc,1,1,25-34,android,13.915,1,1,0
 80564,2024-12,23,in_app_kyc,1,1,25-34,android,9.459,1,0,1
 80565,2024-12,23,in_app_kyc,1,1,25-34,ios,9.267,1,1,1
@@ -80569,7 +80569,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 80568,2024-12,23,in_app_kyc,1,1,35-44,web,6.755,1,1,1
 80569,2024-12,23,in_app_kyc,1,1,45+,android,10.423,1,0,0
 80570,2024-12,23,in_app_kyc,1,1,35-44,web,8.081,0,0,0
-80571,2024-12,23,in_app_kyc,1,1,45+,web,6.923,1,0,0
+80571,2024-12,23,in_app_kyc,1,1,45+,web,6.923,1,0,1
 80572,2024-12,23,in_app_kyc,1,1,25-34,android,10.047,1,1,1
 80573,2024-12,23,in_app_kyc,1,1,45+,ios,9.954,1,1,1
 80574,2024-12,23,in_app_kyc,1,1,35-44,web,1.541,1,0,1
@@ -80787,7 +80787,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 80786,2024-12,23,in_app_kyc,1,1,35-44,web,11.493,0,1,1
 80787,2024-12,23,in_app_kyc,1,1,35-44,ios,6.694,1,0,1
 80788,2024-12,23,in_app_kyc,1,1,45+,web,9.882,1,0,1
-80789,2024-12,23,in_app_kyc,1,1,25-34,web,6.043,0,0,1
+80789,2024-12,23,in_app_kyc,1,1,25-34,web,6.043,0,1,1
 80790,2024-12,23,in_app_kyc,1,1,18-24,web,11.478,0,1,0
 80791,2024-12,23,in_app_kyc,1,1,25-34,web,12.272,1,1,0
 80792,2024-12,23,in_app_kyc,1,1,18-24,ios,4.766,0,1,0
@@ -80985,7 +80985,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 80984,2024-12,23,in_app_kyc,1,1,25-34,web,7.825,1,0,1
 80985,2024-12,23,in_app_kyc,1,1,25-34,ios,2.055,0,1,1
 80986,2024-12,23,in_app_kyc,1,1,35-44,web,13.683,0,1,1
-80987,2024-12,23,in_app_kyc,1,1,35-44,web,7.263,1,1,0
+80987,2024-12,23,in_app_kyc,1,1,35-44,web,7.263,0,1,0
 80988,2024-12,23,in_app_kyc,1,1,18-24,android,4.476,1,1,0
 80989,2024-12,23,in_app_kyc,1,1,25-34,web,11.528,1,1,0
 80990,2024-12,23,in_app_kyc,1,1,35-44,android,4.726,1,1,1
@@ -81033,7 +81033,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 81032,2024-12,23,in_app_kyc,1,1,45+,web,14.072,0,0,1
 81033,2024-12,23,in_app_kyc,1,1,25-34,web,9.847,1,0,1
 81034,2024-12,23,in_app_kyc,1,1,35-44,ios,14.15,0,1,1
-81035,2024-12,23,in_app_kyc,1,1,35-44,web,8.547,1,1,1
+81035,2024-12,23,in_app_kyc,1,1,35-44,web,8.547,0,1,0
 81036,2024-12,23,in_app_kyc,1,1,18-24,android,8.861,0,1,0
 81037,2024-12,23,in_app_kyc,1,1,45+,android,7.371,0,1,0
 81038,2024-12,23,in_app_kyc,1,1,35-44,android,9.87,0,0,0
@@ -81043,12 +81043,12 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 81042,2024-12,23,in_app_kyc,1,1,35-44,android,17.23,0,1,0
 81043,2024-12,23,in_app_kyc,1,1,35-44,ios,5.458,1,1,0
 81044,2024-12,23,in_app_kyc,1,1,35-44,android,13.247,1,0,1
-81045,2024-12,23,in_app_kyc,1,1,25-34,web,12.339,0,0,0
+81045,2024-12,23,in_app_kyc,1,1,25-34,web,12.339,0,1,0
 81046,2024-12,23,in_app_kyc,1,1,45+,android,5.36,0,1,1
 81047,2024-12,23,in_app_kyc,1,1,25-34,web,7.013,0,0,0
 81048,2024-12,23,in_app_kyc,1,1,25-34,web,12.123,0,1,1
 81049,2024-12,23,in_app_kyc,1,1,45+,web,10.915,1,1,0
-81050,2024-12,23,in_app_kyc,1,1,35-44,web,6.63,1,0,0
+81050,2024-12,23,in_app_kyc,1,1,35-44,web,6.63,0,0,0
 81051,2024-12,23,in_app_kyc,1,1,45+,web,2.385,0,0,0
 81052,2024-12,23,in_app_kyc,1,1,25-34,web,8.165,0,1,0
 81053,2024-12,23,in_app_kyc,1,1,45+,ios,6.986,0,1,1
@@ -81242,7 +81242,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 81241,2024-12,23,in_app_kyc,1,1,35-44,web,6.109,0,0,1
 81242,2024-12,23,in_app_kyc,1,1,18-24,web,9.091,1,1,0
 81243,2024-12,23,in_app_kyc,1,1,25-34,ios,1.455,0,0,1
-81244,2024-12,23,in_app_kyc,1,1,25-34,android,7.976,0,0,0
+81244,2024-12,23,in_app_kyc,1,1,25-34,android,7.976,0,1,0
 81245,2024-12,23,in_app_kyc,1,1,45+,web,6.432,1,1,1
 81246,2024-12,23,in_app_kyc,1,1,35-44,web,14.125,0,1,0
 81247,2024-12,23,in_app_kyc,1,1,45+,ios,9.505,1,0,0
@@ -81606,7 +81606,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 81605,2024-12,23,in_app_kyc,1,1,25-34,web,11.802,1,1,1
 81606,2024-12,23,in_app_kyc,1,1,45+,web,9.574,1,1,0
 81607,2024-12,23,in_app_kyc,1,1,25-34,ios,12.026,0,0,0
-81608,2024-12,23,in_app_kyc,1,1,35-44,android,10.422,1,1,0
+81608,2024-12,23,in_app_kyc,1,1,35-44,android,10.422,0,1,0
 81609,2024-12,23,in_app_kyc,1,1,25-34,web,10.701,0,1,0
 81610,2024-12,23,in_app_kyc,1,1,18-24,web,9.194,0,1,1
 81611,2024-12,23,in_app_kyc,1,1,25-34,web,10.798,1,1,1
@@ -81848,12 +81848,12 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 81847,2024-12,23,in_app_kyc,1,1,35-44,web,10.639,0,1,0
 81848,2024-12,23,in_app_kyc,1,1,35-44,web,6.659,0,1,0
 81849,2024-12,23,in_app_kyc,1,1,35-44,ios,13.092,0,1,0
-81850,2024-12,23,in_app_kyc,1,1,18-24,web,7.691,1,1,0
+81850,2024-12,23,in_app_kyc,1,1,18-24,web,7.691,0,1,0
 81851,2024-12,23,in_app_kyc,1,1,18-24,web,8.167,0,1,1
 81852,2024-12,23,in_app_kyc,1,1,25-34,android,12.52,1,0,0
 81853,2024-12,23,in_app_kyc,1,1,25-34,web,6.975,0,1,1
 81854,2024-12,23,in_app_kyc,1,1,45+,android,4.496,0,0,0
-81855,2024-12,23,in_app_kyc,1,1,18-24,web,3.694,1,1,1
+81855,2024-12,23,in_app_kyc,1,1,18-24,web,3.694,0,0,1
 81856,2024-12,23,in_app_kyc,1,1,45+,android,9.268,1,1,0
 81857,2024-12,23,in_app_kyc,1,1,45+,android,10.267,1,1,0
 81858,2024-12,23,in_app_kyc,1,1,45+,web,10.439,1,0,1
@@ -82027,7 +82027,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 82026,2024-12,23,in_app_kyc,1,1,25-34,ios,8.173,0,1,1
 82027,2024-12,23,in_app_kyc,1,1,35-44,android,7.179,1,1,1
 82028,2024-12,23,in_app_kyc,1,1,35-44,ios,8.674,1,1,1
-82029,2024-12,23,in_app_kyc,1,1,25-34,ios,7.374,1,0,0
+82029,2024-12,23,in_app_kyc,1,1,25-34,ios,7.374,1,0,1
 82030,2024-12,23,in_app_kyc,1,1,35-44,ios,7.266,1,1,0
 82031,2024-12,23,in_app_kyc,1,1,18-24,web,5.602,0,1,0
 82032,2024-12,23,in_app_kyc,1,1,45+,android,9.838,1,1,1
@@ -82338,7 +82338,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 82337,2024-12,23,in_app_kyc,1,1,45+,ios,7.093,1,1,0
 82338,2024-12,23,in_app_kyc,1,1,18-24,web,13.065,0,1,1
 82339,2024-12,23,in_app_kyc,1,1,35-44,android,11.97,1,1,1
-82340,2024-12,23,in_app_kyc,1,1,45+,android,10.084,1,1,0
+82340,2024-12,23,in_app_kyc,1,1,45+,android,10.084,0,1,0
 82341,2024-12,23,in_app_kyc,1,1,45+,ios,9.254,0,0,0
 82342,2024-12,23,in_app_kyc,1,1,35-44,android,8.488,0,0,0
 82343,2024-12,23,in_app_kyc,1,1,45+,ios,6.036,0,0,0
@@ -82420,7 +82420,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 82419,2024-12,23,in_app_kyc,1,1,25-34,ios,10.36,0,0,1
 82420,2024-12,23,in_app_kyc,1,1,18-24,android,11.139,1,1,0
 82421,2024-12,23,in_app_kyc,1,1,35-44,ios,7.172,1,1,1
-82422,2024-12,23,in_app_kyc,1,1,18-24,ios,4.146,0,0,0
+82422,2024-12,23,in_app_kyc,1,1,18-24,ios,4.146,0,1,0
 82423,2024-12,23,in_app_kyc,1,1,25-34,ios,11.823,0,1,1
 82424,2024-12,23,in_app_kyc,1,1,18-24,web,6.928,0,0,0
 82425,2024-12,23,in_app_kyc,1,1,35-44,ios,7.269,1,0,0
@@ -82538,7 +82538,7 @@ user_id,cohort,month_index,segment,treated,post,age_group,device,pre_activity,ac
 82537,2024-12,23,in_app_kyc,1,1,35-44,android,5.411,1,0,0
 82538,2024-12,23,in_app_kyc,1,1,18-24,android,12.375,0,0,0
 82539,2024-12,23,in_app_kyc,1,1,35-44,ios,8.392,1,1,0
-82540,2024-12,23,in_app_kyc,1,1,35-44,web,8.98,1,1,1
+82540,2024-12,23,in_app_kyc,1,1,35-44,web,8.98,0,1,1
 82541,2024-12,23,in_app_kyc,1,1,25-34,android,6.576,1,1,1
 82542,2024-12,23,in_app_kyc,1,1,45+,ios,10.541,1,0,1
 82543,2024-12,23,in_app_kyc,1,1,45+,android,10.303,0,0,1

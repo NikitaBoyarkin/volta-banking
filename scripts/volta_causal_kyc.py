@@ -450,9 +450,12 @@ def section_chart() -> Path:
 
 def section_limitation() -> None:
     print_section("LIMITATION — READ BEFORE CITING")
-    print("""
+    act = KNOWN_TOTAL_ATT["activated"] * 100
+    m1 = KNOWN_TOTAL_ATT["retained_m1"] * 100
+    m3 = KNOWN_TOTAL_ATT["retained_m3"] * 100
+    print(f"""
   The data is synthetic. `generate_causal_kyc_data.py` injects known TOTAL
-  effects (+6.0pp activation, +8.5pp M1, +9.0pp M3), so the DiD recovering
+  effects (+{act:.1f}pp activation, +{m1:.1f}pp M1, +{m3:.1f}pp M3), so the DiD recovering
   those values (within the 95% CI — see the recovery check above) demonstrates
   that:
 

@@ -8,8 +8,8 @@ Type: HTE (heterogeneous treatment effect) · Segment deep-dive · Channel analy
 Validates audit risk #4: "KYC-фикс не закрывает 45+ (трение — доверие, не UX)"
 (the KYC fix doesn't close 45+ — friction is trust, not UX). The KYC progress
 bar A/B test (Project 2) lifts KYC completion overall, but the HTE cut by age
-shows the lift concentrates in 35-44 (+10pp) while 45+ barely moves (+0.6pp,
-not significant). Channel analysis shows referral — a trust channel — converts
+shows the lift concentrates in the younger/mid segments while 45+ barely moves
+(not significant). Channel analysis shows referral — a trust channel — converts
 45+ best, supporting the assisted-onboarding recommendation.
 
 Data: `volta_ab_experiment.csv` (produced by `generate_ab_data.py`) — the A/B
@@ -189,37 +189,57 @@ def section_hte(hte: pd.DataFrame) -> None:
     print("\nKYC completion by age × group:")
     print(display.round(2).to_string())
     print_subsection("READING THE TABLE")
-    print("  The progress bar lifts 18-24 and 35-44 significantly, but 45+")
-    print("  barely moves (+0.6pp, ns) — the fix doesn't close the 45+ gap.")
+    sig = [a for a in AGE_ORDER if hte.loc[a, "p"] < ALPHA and hte.loc[a, "lift_pp"] > 0]
+    sig_str = ", ".join(f"{a} +{hte.loc[a, 'lift_pp']:.1f}pp" for a in sig) or "none"
+    gap_lift = hte.loc[GAP_AGE, "lift_pp"]
+    gap_label = "ns" if hte.loc[GAP_AGE, "p"] >= ALPHA else f"p={hte.loc[GAP_AGE, 'p']:.3f}"
+    print(f"  Significant positive lift: {sig_str}.")
+    print(
+        f"  {GAP_AGE} moves +{gap_lift:.1f}pp ({gap_label}) — the fix doesn't close the {GAP_AGE} gap."
+    )
 
 
 def section_channel(gap: pd.DataFrame) -> None:
     print_section("KYC COMPLETION BY CHANNEL (TREATMENT)")
     print(f"\n{ANCHOR_AGE} vs {GAP_AGE} by channel:")
     print(gap.to_string())
+    best = gap["gap_rate"].idxmax()
+    smallest = gap["gap_pp"].idxmax()
     print_subsection("READING THE TABLE")
-    print("  Referral — a trust channel — has the smallest 45+ gap. 45+ friction")
-    print("  is trust, not UX: a progress bar can't fix it, assisted onboarding can.")
+    print(f"  {best} converts {GAP_AGE} best ({gap.loc[best, 'gap_rate']:.1f}%) and {smallest}")
+    print(f"  has the smallest {GAP_AGE} gap vs {ANCHOR_AGE}. Friction is trust, not UX:")
+    print("  a progress bar can't fix it, assisted onboarding can.")
 
 
 def section_chi_square(chi: ChiSquareResult) -> None:
     print_section("STATISTICAL TEST: AGE × COMPLETION (TREATMENT)")
     print(f"  Chi-square: chi2={chi['chi2']:.1f}, p={chi['p']:.4f}, dof={chi['dof']}")
-    print("  → Age and KYC completion are NOT independent in treatment.")
+    if chi["p"] < ALPHA:
+        print("  → Age and KYC completion are NOT independent in treatment.")
+    else:
+        print("  → No evidence age and KYC completion differ in treatment.")
 
 
-def section_conclusion() -> None:
-    print_section("CONCLUSION: KYC FIX DOESN'T CLOSE 45+")
-    print("""
-Risk #4 validated: the KYC progress bar fix doesn't close 45+.
+def section_conclusion(hte: pd.DataFrame, gap: pd.DataFrame, chi: ChiSquareResult) -> None:
+    print_section(f"CONCLUSION: KYC FIX DOESN'T CLOSE {GAP_AGE}")
+    sig = [a for a in AGE_ORDER if hte.loc[a, "p"] < ALPHA and hte.loc[a, "lift_pp"] > 0]
+    sig_str = ", ".join(f"{a} +{hte.loc[a, 'lift_pp']:.1f}pp" for a in sig) or "none"
+    gap_lift = hte.loc[GAP_AGE, "lift_pp"]
+    gap_label = "ns" if hte.loc[GAP_AGE, "p"] >= ALPHA else f"p<{ALPHA}"
+    gap_rate = hte.loc[GAP_AGE, "treatment_rate"] * 100
+    anchor_rate = hte.loc[ANCHOR_AGE, "treatment_rate"] * 100
+    best = gap["gap_rate"].idxmax()
+    smallest = gap["gap_pp"].idxmax()
+    print(f"""
+Risk #4 validated: the KYC progress bar fix doesn't close {GAP_AGE}.
 
-  • HTE by age: 35-44 +10pp (p<0.001) and 18-24 +4.6pp (p<0.05) lift
-    significantly; 45+ +0.6pp (ns) — the fix doesn't transfer.
-  • The 45+ gap persists in treatment: 45+ 52.4% vs 25-34 60.4% (z-test
-    significant) — even with the fix, 45+ converts worst.
-  • Channel: referral (trust) converts 45+ best and has the smallest gap vs
-    25-34 — friction is trust, not UX.
-  • Implication: don't ship a UX-only fix for 45+. Separate track: assisted
+  • HTE by age: {sig_str} lift significantly; {GAP_AGE} +{gap_lift:.1f}pp
+    ({gap_label}) — the fix doesn't transfer.
+  • The {GAP_AGE} gap persists in treatment: {GAP_AGE} {gap_rate:.1f}% vs {ANCHOR_AGE}
+    {anchor_rate:.1f}% (chi-square p={chi["p"]:.4f}) — even with the fix, {GAP_AGE} converts worst.
+  • Channel: {best} (trust) converts {GAP_AGE} best and {smallest} has the
+    smallest gap vs {ANCHOR_AGE} — friction is trust, not UX.
+  • Implication: don't ship a UX-only fix for {GAP_AGE}. Separate track: assisted
     onboarding (video call / in-branch KYC) + partner channel, per audit
     recommendation #3.
 
@@ -247,7 +267,7 @@ def main() -> None:
     plot_hte_by_age(df, out)
     print(f"\nSaved: {out.name}")
 
-    section_conclusion()
+    section_conclusion(hte, gap, chi)
     print("=" * 70)
     print("Analysis complete.")
     print("=" * 70)

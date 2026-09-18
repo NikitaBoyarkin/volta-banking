@@ -15,7 +15,7 @@ Design — a natural-experiment panel around the Sep 2024 KYC fix:
   outcomes, so the difference-in-differences estimator can be checked against
   a ground truth:
 
-    activated    +0.060   (matches Project 2's +6.24pp activation lift)
+    activated    +0.057   (matches Project 2's +5.72pp activation lift)
     retained_m1  +0.085
     retained_m3  +0.090   (matches the +9.2pp M3 retention claim)
 
@@ -57,7 +57,7 @@ SEG_LEVEL_EFFECT = -0.02  # treated flow starts slightly below comparison
 # Retention is affected both directly by the fix and indirectly through
 # activation, so we declare the *total* effect (what a DiD identifies) and
 # derive the direct coefficient the generator actually injects.
-ATT_ACTIVATED = 0.060
+ATT_ACTIVATED = 0.057
 ATT_M1_TOTAL = 0.085
 ATT_M3_TOTAL = 0.090
 
