@@ -206,8 +206,12 @@ def section_channel(gap: pd.DataFrame) -> None:
     best = gap["gap_rate"].idxmax()
     smallest = gap["gap_pp"].idxmax()
     print_subsection("READING THE TABLE")
-    print(f"  {best} converts {GAP_AGE} best ({gap.loc[best, 'gap_rate']:.1f}%) and {smallest}")
-    print(f"  has the smallest {GAP_AGE} gap vs {ANCHOR_AGE}. Friction is trust, not UX:")
+    if best == smallest:
+        print(f"  {best} converts {GAP_AGE} best ({gap.loc[best, 'gap_rate']:.1f}%) and has the")
+        print(f"  smallest {GAP_AGE} gap vs {ANCHOR_AGE}. Friction is trust, not UX:")
+    else:
+        print(f"  {best} converts {GAP_AGE} best ({gap.loc[best, 'gap_rate']:.1f}%); {smallest}")
+        print(f"  has the smallest {GAP_AGE} gap vs {ANCHOR_AGE}. Friction is trust, not UX:")
     print("  a progress bar can't fix it, assisted onboarding can.")
 
 
