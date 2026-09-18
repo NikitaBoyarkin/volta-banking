@@ -1,0 +1,57 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Volta Neobank — portfolio walkthrough",
+  "description": "A 10-step tour of the Volta product-analytics portfolio: the narrative, the shared helpers, a core analysis, the causal layer, the zero-install board, and the tests.",
+  "steps": [
+    {
+      "file": "README.md",
+      "line": 1,
+      "description": "Start here. The README states the narrative (funnel → A/B → retention → segmentation → Market & Jobs), links the zero-install board and the active PRD, and indexes all 17 projects."
+    },
+    {
+      "file": "docs/prd-v2.md",
+      "line": 1,
+      "description": "The active contract: Portfolio 2.0, a bounded reopen. It defines the three carve-outs (causal layer, SHAP, HTML board), the polish set, and the explicit out-of-scope list that keeps the reopen bounded."
+    },
+    {
+      "file": "docs/adr/0001-bounded-reopen-volta-2.0.md",
+      "line": 1,
+      "description": "Why 2.0 exists at all. This ADR supersedes v1's \"fixate as-is\" decision and records the rejected alternatives (honor fixate, full reopen)."
+    },
+    {
+      "file": "utils/common.py",
+      "line": 69,
+      "description": "Shared conventions live here: CONSTANTS (so scripts don't drift apart), data_path() for locating committed CSVs, and OUTPUT_DIR for PNGs. Every analysis imports from this module."
+    },
+    {
+      "file": "scripts/volta_funnel_analysis.py",
+      "line": 925,
+      "description": "A representative core analysis. Each volta_*.py is self-contained: functions plus a main() guarded by `if __name__ == \"__main__\"`, so importing it executes nothing."
+    },
+    {
+      "file": "scripts/generate_causal_kyc_data.py",
+      "line": 90,
+      "description": "The causal layer's data. generate_panel() builds a cohort panel where a *known* treatment effect is injected — the ground truth the estimator must recover. Parallel trends hold by construction."
+    },
+    {
+      "file": "scripts/volta_causal_kyc.py",
+      "line": 138,
+      "description": "regression_did() is the causal estimator: a covariate-adjusted difference-in-differences with cohort-clustered standard errors. The treated × post coefficient is the ATT."
+    },
+    {
+      "file": "scripts/volta_causal_kyc.py",
+      "line": 178,
+      "description": "The diagnostics that make a DiD credible: parallel_trends() tests the pre-period for differential drift, and the script also runs a placebo at a fake cutoff and covariate-balance/overlap checks."
+    },
+    {
+      "file": "scripts/build_board.py",
+      "line": 289,
+      "description": "build_html() renders the zero-install board: every chart is inline SVG emitted from the committed CSVs, with no JavaScript and no CDN. The same script regenerates the OG social-preview image."
+    },
+    {
+      "file": "tests/test_causal_kyc.py",
+      "line": 47,
+      "description": "Tests lock in the behavior: the DiD must recover the injected ATT, the placebo must be null, pre-trends must be flat, and balance must pass the SMD gate. Run everything with `make all`."
+    }
+  ]
+}

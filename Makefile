@@ -1,7 +1,7 @@
 # Volta Neobank — task runner
-# Targets: make data | test | lint | format | type | all
+# Targets: make data | test | lint | format | type | board | all
 
-.PHONY: data test lint format type all setup
+.PHONY: data test lint format type board all setup
 
 setup:
 	uv sync --all-groups
@@ -29,6 +29,7 @@ data:
 	$(PY) scripts/generate_jtbd_data.py
 	$(PY) scripts/generate_unit_economics_data.py
 	$(PY) scripts/generate_premium_upsell_data.py
+	$(PY) scripts/generate_causal_kyc_data.py
 
 test:
 	uv run pytest
@@ -44,6 +45,9 @@ type:
 
 notebooks:
 	$(PY) scripts/build_notebooks.py
+
+board:
+	$(PY) scripts/build_board.py
 
 all: data test lint type
 	@echo "All checks passed."

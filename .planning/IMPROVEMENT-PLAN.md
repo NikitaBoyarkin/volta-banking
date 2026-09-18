@@ -68,6 +68,28 @@ F1–F3, R1–R3, S1–S3) выполнен, 54 теста зелёные, ruff 
 
 ---
 
+## Спринт 7: Portfolio 2.0 — bounded reopen (PRD v2) — 🔄 в работе
+
+**Источник:** `docs/prd-v2.md` (2026-09-19) + ADR `docs/adr/0001-bounded-reopen-volta-2.0.md`.
+**Конфликт:** v1 зафиксировал «as-is, новых фич нет»; аудит целей (конверсия + глубина) требует одного ограниченного окна. Решение — bounded reopen: 3 carve-out + polish, всё остальное остаётся out-of-scope.
+
+| # | Задача | Приоритет | Статус | Критерий успеха |
+|---|--------|-----------|--------|-----------------|
+| REQ-210 | **PRD v2 + ADR + vault-зеркало** | P0 | ✅ | `docs/prd-v2.md`, `docs/adr/0001-*`, `PRD v2 - Volta Banking.md`, README-ссылка |
+| REQ-201 | **Causal-слой** (`volta_causal_kyc.py` + generator) | P0 | ✅ | DiD ATT восстанавливает known effect, parallel trends / placebo / balance / overlap; тест + CI |
+| REQ-202 | **SHAP на churn** | P1 | ✅ | global summary + local waterfall PNG; `shap` в deps; тест |
+| REQ-203 | **Self-contained HTML-борд** (`build_board.py`) | P0 | ✅ | 8 inline-SVG секций из CSV, 0 JS/CDN, `make board`, тест |
+| REQ-204 | **README hero** (бейджи + хук + hero + ссылки) | P0 | 🔄 | бейджи CI/Python/coverage/license, OG-картинка, ссылка на борд |
+| REQ-205 | **LICENSE (MIT)** | P0 | ✅ | `LICENSE` в корне |
+| REQ-206 | **Doc-drift reconciliation** | P0 | 🔄 | README ↔ PRD v2 ↔ `.planning`; найдены 2 числовых дрейфа (A/B, churn) — решение по ним отдельно |
+| REQ-207 | **Code tour** | P1 | ✅ | `.tours/volta-portfolio.tour`, 10 шагов на реальных файлах |
+| REQ-208 | **Social preview (OG)** | P1 | ✅ | `docs/board/og_image.png` 1200×630 из CSV |
+| REQ-209 | **Case-study пост** | P1 | ⏭️ | после спринта |
+
+**Правило сжатия:** REQ-208 → REQ-207 → REQ-202; никогда не дропаем REQ-201/203/204/205/206/210.
+
+---
+
 ## Приоритеты и последовательность
 
 1. ✅ **Спринт 2 (P0):** B2 → B3 → B1 → B4 → B7 — инженерный слой.

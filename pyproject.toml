@@ -17,6 +17,7 @@ dependencies = [
     # PDF processing
     "pdfplumber>=0.10.0",
     "pypdf>=4.0.0",
+    "shap>=0.49.1",
 ]
 
 [dependency-groups]
@@ -65,13 +66,15 @@ files = [
     "scripts/volta_premium_upsell.py",
     "scripts/volta_kyc_deep_dive.py",
     "scripts/volta_referral_segments.py",
+    "scripts/volta_causal_kyc.py",
+    "scripts/build_board.py",
     "utils/common.py",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "scripts"]
-addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=utils --cov-report=term-missing"
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=volta_causal_kyc --cov=build_board --cov=utils --cov-report=term-missing"
 
 [tool.coverage.run]
 # utils/pdf_processor.py and utils/report_generator.py are legacy/speculative

@@ -14,7 +14,10 @@ from volta_churn_prediction import (
     load_data,
     plot_importance,
     plot_roc,
+    plot_shap_local,
+    plot_shap_summary,
     prep_features,
+    shap_positive_class,
 )
 
 SEED = 42
@@ -91,3 +94,31 @@ def test_plot_importance_writes_png(tmp_path) -> None:
     imp = pd.DataFrame({"Feature": ["a", "b", "c"], "Importance": [0.5, 0.3, 0.2]})
     out = plot_importance(imp, tmp_path / "imp.png")
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_shap_positive_class_shape_and_base() -> None:
+    """SHAP values are 2-D (n, features) for the churn class with a base value."""
+    df = load_data()
+    X, y, names = prep_features(df)
+    rf = fit_models(X[:500], y[:500])["Random Forest"]
+    values, base, _ = shap_positive_class(rf, X[:50])
+    assert values.shape == (50, len(names))
+    assert 0.0 <= base <= 1.0
+
+
+def test_plot_shap_summary_writes_png(tmp_path) -> None:
+    df = load_data()
+    X, y, names = prep_features(df)
+    rf = fit_models(X[:500], y[:500])["Random Forest"]
+    values, _, _ = shap_positive_class(rf, X[:50])
+    out = plot_shap_summary(values, X[:50], names, tmp_path / "summary.png")
+    assert out.exists() and out.stat().st_size > 1000
+
+
+def test_plot_shap_local_writes_png(tmp_path) -> None:
+    df = load_data()
+    X, y, names = prep_features(df)
+    rf = fit_models(X[:500], y[:500])["Random Forest"]
+    values, base, _ = shap_positive_class(rf, X[:50])
+    out = plot_shap_local(values, X[:50], base, names, 0, tmp_path / "local.png")
+    assert out.exists() and out.stat().st_size > 1000

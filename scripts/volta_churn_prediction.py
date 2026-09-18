@@ -167,6 +167,100 @@ def section_feature_importance(imp_df: pd.DataFrame) -> Path:
     return out
 
 
+# ── SHAP explainability (REQ-202, Portfolio 2.0) ─────────────────────────────
+SHAP_SAMPLE = 500
+
+
+def shap_positive_class(rf: Any, X_sample: np.ndarray) -> tuple[np.ndarray, float, Any]:
+    """SHAP values for the churn (positive) class + the base value + explainer.
+
+    `shap_values` returns shape (n, features, n_classes) for a binary RF in
+    current shap; we slice the positive class so downstream plots are 2-D.
+    """
+    import shap
+
+    explainer = shap.TreeExplainer(rf)
+    values = np.asarray(explainer.shap_values(X_sample))
+    if values.ndim == 3:
+        values = values[:, :, 1]
+    base = float(np.ravel(explainer.expected_value)[-1])
+    return values, base, explainer
+
+
+def plot_shap_summary(
+    shap_values: np.ndarray, X_sample: np.ndarray, feature_names: list[str], out: Path
+) -> Path:
+    """Global SHAP beeswarm summary: distribution of impact per feature."""
+    import matplotlib.pyplot as plt
+    import shap
+
+    shap.summary_plot(shap_values, X_sample, feature_names=feature_names, show=False)
+    fig = plt.gcf()
+    fig.set_size_inches(9, 6)
+    fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return out
+
+
+def plot_shap_local(
+    shap_values: np.ndarray,
+    X_sample: np.ndarray,
+    base_value: float,
+    feature_names: list[str],
+    idx: int,
+    out: Path,
+) -> Path:
+    """Local SHAP waterfall for one user: why *this* user is high/low risk."""
+    import matplotlib.pyplot as plt
+    import shap
+
+    explanation = shap.Explanation(
+        values=shap_values[idx],
+        base_values=base_value,
+        data=X_sample[idx],
+        feature_names=feature_names,
+    )
+    shap.plots.waterfall(explanation, show=False)
+    fig = plt.gcf()
+    fig.set_size_inches(9, 6)
+    fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return out
+
+
+def section_shap(rf: Any, X_sample: np.ndarray, feature_names: list[str]) -> None:
+    print_subsection("SHAP Explainability (REQ-202)")
+    shap_values, base, _ = shap_positive_class(rf, X_sample)
+    mean_abs = (
+        pd.DataFrame({"Feature": feature_names, "mean_abs_SHAP": np.abs(shap_values).mean(axis=0)})
+        .sort_values("mean_abs_SHAP", ascending=False)
+        .reset_index(drop=True)
+    )
+    print("  Global drivers (mean |SHAP|, churn class):")
+    print(mean_abs.head(6).to_string(index=False))
+    print(f"  Base value (expected churn probability): {base:.3f}")
+
+    summary_out = plot_shap_summary(
+        shap_values, X_sample, feature_names, OUTPUT_DIR / "churn_shap_summary.png"
+    )
+    print(f"  Saved: {summary_out.name}  (beeswarm — global impact & direction)")
+
+    probs = rf.predict_proba(X_sample)[:, 1]
+    idx = int(np.argmax(probs))
+    local_out = plot_shap_local(
+        shap_values,
+        X_sample,
+        base,
+        feature_names,
+        idx,
+        OUTPUT_DIR / "churn_shap_local.png",
+    )
+    print(f"  Highest-risk user in sample: p(churn) = {probs[idx]:.2f}")
+    print(f"  Saved: {local_out.name}  (waterfall — why THIS user)")
+    print("  → SHAP confirms feature importance but adds direction per user,")
+    print("    which is what makes a churn score actionable (and auditable).")
+
+
 def section_insights(imp_df: pd.DataFrame) -> None:
     print_subsection("Insights → Segmentation Link")
     top = imp_df["Feature"].iloc[0]
@@ -201,6 +295,11 @@ def main() -> None:
     section_roc(models, X_test, y_test)
     imp_df = feature_importance(models["Random Forest"], feature_names)
     section_feature_importance(imp_df)
+
+    rng = np.random.default_rng(SEED)
+    sample_idx = rng.choice(len(X_test), size=min(SHAP_SAMPLE, len(X_test)), replace=False)
+    section_shap(models["Random Forest"], X_test[sample_idx], feature_names)
+
     section_insights(imp_df)
     section_recommendations()
 

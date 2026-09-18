@@ -28,7 +28,10 @@ SEED = 42
 RNG = np.random.default_rng(SEED)
 
 BASE_CONTROL = 0.566
-BASE_LIFT = 0.05
+# True effect of the KYC progress bar. The realized overall lift is this plus the
+# segment-mix-weighted LIFT_DELTA (~+0.3pp), so ~+6.3pp — deliberately above the
+# +5pp design MDE so the experiment demonstrates a clear ship decision.
+BASE_LIFT = 0.06
 
 # Small per-segment offsets on the control rate (additive on the logit-ish scale,
 # kept small so the overall mean stays ~0.566).
@@ -45,7 +48,7 @@ CONTROL_OFFSET = {
     "channel=website": -0.03,
     "channel=referral": 0.04,
 }
-# Per-segment additive lift on top of the +5pp base (heterogeneous treatment effect).
+# Per-segment additive lift on top of the base effect (heterogeneous treatment effect).
 LIFT_DELTA = {
     "age_group=18-24": -0.01,
     "age_group=25-34": 0.00,

@@ -107,6 +107,11 @@ def referral_segments_output() -> str:
     return _run_main("volta_referral_segments")
 
 
+@pytest.fixture(scope="module")
+def causal_kyc_output() -> str:
+    return _run_main("volta_causal_kyc")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -175,3 +180,9 @@ def test_kyc_deep_dive_runs(kyc_deep_dive_output: str) -> None:
 def test_referral_segments_runs(referral_segments_output: str) -> None:
     assert "Analysis complete" in referral_segments_output
     assert "does NOT scale" in referral_segments_output
+
+
+def test_causal_kyc_runs(causal_kyc_output: str) -> None:
+    assert "Analysis complete" in causal_kyc_output
+    assert "RECOVERY CHECK" in causal_kyc_output
+    assert "LIMITATION" in causal_kyc_output
