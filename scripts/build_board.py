@@ -262,6 +262,37 @@ def jtbd_counts(df: pd.DataFrame) -> tuple[list[str], list[float]]:
     return [SEGMENT_LABELS[s] for s in counts.index], [float(v) for v in counts.values]
 
 
+def assisted_ltv_cac_by_segment(df: pd.DataFrame) -> tuple[list[str], list[float]]:
+    """Blended LTV/CAC per segment (all acquisition channels)."""
+    ratio = df.groupby("segment").apply(
+        lambda d: d["ltv_eur"].mean() / d["cac_eur"].mean(), include_groups=False
+    )
+    ratio = ratio.sort_values(ascending=False)
+    return [SEGMENT_LABELS[s] for s in ratio.index], [float(v) for v in ratio.values]
+
+
+def fx_cost_by_volume(df: pd.DataFrame) -> tuple[list[str], list[float]]:
+    """Best effective FX cost per monthly-volume tier (the sourcing curve)."""
+    curve = df.groupby("monthly_volume_eur")["effective_cost_pct"].min().sort_index()
+    return [f"{v / 1e6:.0f}M" for v in curve.index], [float(v) / 100.0 for v in curve.values]
+
+
+PREMIUM_OFFER_SEGMENTS = [
+    "young_professionals",
+    "digital_newcomers",
+    "family_budgeters",
+    "travelers",
+]
+
+
+def premium_offers_by_segment(df: pd.DataFrame) -> tuple[list[str], list[float], list[float]]:
+    """Premium conversion (%) per segment for control and treatment arms."""
+    tab = df.pivot_table(index="jtbd_segment", columns="group", values="converted", aggfunc="mean")
+    tab = tab.reindex(PREMIUM_OFFER_SEGMENTS) * 100
+    labels = [SEGMENT_LABELS[s] for s in tab.index]
+    return labels, [float(v) for v in tab["control"]], [float(v) for v in tab["treatment"]]
+
+
 def segment_revenue_share(df: pd.DataFrame) -> tuple[list[str], list[float]]:
     df = df.sort_values("revenue_share", ascending=False)
     return list(df["segment"]), [float(v) / 100.0 for v in df["revenue_share"]]
@@ -295,6 +326,9 @@ def build_html() -> str:
     jtbd = _read("volta_jtbd_segments.csv")
     premium = _read("volta_premium_upsell.csv")
     referral = _read("volta_referral_segments.csv")
+    assisted = _read("volta_assisted_cac.csv")
+    fx_sourcing = _read("volta_fx_sourcing.csv")
+    premium_offers = _read("volta_premium_offers.csv")
     profiles = _read("segment_profiles.csv")
 
     control, treatment, lift = ab_lift(ab)
@@ -303,6 +337,9 @@ def build_html() -> str:
     did = causal_did(causal)
     prem_labels, prem_vals = premium_by_segment(premium)
     ref_labels, ref_vals = referral_by_segment(referral)
+    cac_labels, cac_vals = assisted_ltv_cac_by_segment(assisted)
+    fx_labels, fx_vals = fx_cost_by_volume(fx_sourcing)
+    off_labels, off_control, off_treatment = premium_offers_by_segment(premium_offers)
 
     funnel_labels, funnel_vals = funnel_step_conversion(funnel)
     seg_labels, seg_vals = segment_revenue_share(profiles)
@@ -310,7 +347,7 @@ def build_html() -> str:
 
     kpis = "".join(
         [
-            _kpi("17", "analytical projects", "funnel → JTBD → causal"),
+            _kpi("20", "analytical projects", "funnel → JTBD → causal → RAT v2"),
             _kpi("170+", "tests · 98% coverage", "ruff · mypy · CI green"),
             _kpi(f"+{lift * 100:.2f}pp", "KYC activation lift", "A/B, p<0.0001"),
             _kpi(f"+{m3_delta * 100:.1f}pp", "M3 retention lift", "post-fix cohorts"),
@@ -404,6 +441,38 @@ def build_html() -> str:
                 bar_chart(ref_labels, ref_vals, color=COLORS["warn"]),
                 "Referral converts best in the anchor and collapses for 45+ and family budgeters — "
                 "don't scale referral spend before segment-specific incentives.",
+            ),
+            _section(
+                "offers",
+                "Market & Jobs — segment-specific premium offers",
+                "Do segment-specific offers lift conversion where the generic upsell failed?",
+                grouped_bar_chart(
+                    off_labels,
+                    [
+                        ("generic (control)", off_control, COLORS["muted"]),
+                        ("segment-specific", off_treatment, COLORS["ok"]),
+                    ],
+                ),
+                "The offer lifts the gap segments (+3–4pp) far more than the anchor (+0.9pp) — "
+                "but 45+ treatment stays ~4× below the anchor's generic offer. Narrows, doesn't close.",
+            ),
+            _section(
+                "fx",
+                "Market & Jobs — FX sourcing feasibility",
+                "Can the traveler FX cost be negotiated down to break-even?",
+                bar_chart(
+                    fx_labels, fx_vals, fmt=lambda v: f"{v * 100:.2f}%", color=COLORS["gold"]
+                ),
+                "Best effective FX cost falls ~0.20pp per 10× volume: the 0.55% break-even gate is "
+                "reachable only at SOM scale — a cold-start, not a hard price wall.",
+            ),
+            _section(
+                "assisted",
+                "Market & Jobs — assisted-onboarding economics",
+                "Does the 45+ trust track pay for itself?",
+                bar_chart(cac_labels, cac_vals, fmt=lambda v: f"{v:.2f}×", color=COLORS["accent"]),
+                "Blended LTV/CAC: the anchor sits near 2× while 45+ sits below 1× — assisted "
+                "onboarding buys retention but its CAC cannot be repaid. Don't scale it as-is.",
             ),
             _section(
                 "jtbd",
@@ -538,7 +607,7 @@ def build_og_image(out: Path = OG_PATH) -> Path:
         (f"+{lift * 100:.2f}pp", "KYC activation lift"),
         (f"+{(post_curve[3] - pre_curve[3]) * 100:.1f}pp", "M3 retention"),
         (f"+{did['att'] * 100:.1f}pp", "causal DiD ATT"),
-        ("17", "analytical projects"),
+        ("20", "analytical projects"),
     ]
     x0, wid, gap = 0.06, 0.205, 0.016
     for i, (value, label) in enumerate(chips):

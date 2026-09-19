@@ -112,6 +112,21 @@ def causal_kyc_output() -> str:
     return _run_main("volta_causal_kyc")
 
 
+@pytest.fixture(scope="module")
+def assisted_cac_output() -> str:
+    return _run_main("volta_assisted_cac")
+
+
+@pytest.fixture(scope="module")
+def fx_sourcing_output() -> str:
+    return _run_main("volta_fx_sourcing")
+
+
+@pytest.fixture(scope="module")
+def premium_offers_output() -> str:
+    return _run_main("volta_premium_offers")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -186,3 +201,18 @@ def test_causal_kyc_runs(causal_kyc_output: str) -> None:
     assert "Analysis complete" in causal_kyc_output
     assert "RECOVERY CHECK" in causal_kyc_output
     assert "LIMITATION" in causal_kyc_output
+
+
+def test_assisted_cac_runs(assisted_cac_output: str) -> None:
+    assert "Analysis complete" in assisted_cac_output
+    assert "DOESN'T CLEAR THE GATE" in assisted_cac_output
+
+
+def test_fx_sourcing_runs(fx_sourcing_output: str) -> None:
+    assert "Analysis complete" in fx_sourcing_output
+    assert "COLD-START" in fx_sourcing_output.upper()
+
+
+def test_premium_offers_runs(premium_offers_output: str) -> None:
+    assert "Analysis complete" in premium_offers_output
+    assert "PARTIALLY" in premium_offers_output.upper()

@@ -12,6 +12,9 @@ REQUIRED_SECTIONS = [
     "segmentation",
     "jobs",
     "referral",
+    "offers",
+    "fx",
+    "assisted",
     "jtbd",
 ]
 
@@ -34,9 +37,31 @@ def test_build_html_has_every_section_and_chart() -> None:
     html = bb.build_html()
     for sec in REQUIRED_SECTIONS:
         assert f'id="{sec}"' in html, sec
-    # 8 sections → 8 inline SVG charts.
+    # One inline SVG chart per section.
     assert html.count("<svg") == len(REQUIRED_SECTIONS)
     assert "NaN" not in html and "nan" not in html
+
+
+def test_assisted_ltv_cac_ordering() -> None:
+    labels, values = bb.assisted_ltv_cac_by_segment(bb._read("volta_assisted_cac.csv"))
+    assert labels[0] == "Young Professionals"
+    assert values[0] > values[-1]
+    assert values[-1] < 1.0
+
+
+def test_fx_cost_decreases_with_volume() -> None:
+    labels, values = bb.fx_cost_by_volume(bb._read("volta_fx_sourcing.csv"))
+    assert len(labels) == len(values) == 9
+    assert values[0] > values[-1]
+    assert values[-1] <= 0.0055
+
+
+def test_premium_offers_treatment_beats_control() -> None:
+    labels, control, treatment = bb.premium_offers_by_segment(bb._read("volta_premium_offers.csv"))
+    assert len(labels) == 4
+    assert all(t > c for t, c in zip(treatment, control, strict=True))
+    # The anchor still converts far above the 45+ treatment.
+    assert treatment[0] > treatment[1] * 2
 
 
 def test_chart_helpers_emit_svg() -> None:

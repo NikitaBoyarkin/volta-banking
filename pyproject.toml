@@ -74,7 +74,7 @@ files = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "scripts"]
-addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=volta_causal_kyc --cov=build_board --cov=utils --cov-report=term-missing"
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=volta_causal_kyc --cov=volta_assisted_cac --cov=volta_fx_sourcing --cov=volta_premium_offers --cov=build_board --cov=utils --cov-report=term-missing"
 
 [tool.coverage.run]
 # utils/pdf_processor.py and utils/report_generator.py are legacy/speculative

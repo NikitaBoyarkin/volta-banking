@@ -30,6 +30,9 @@ data:
 	$(PY) scripts/generate_unit_economics_data.py
 	$(PY) scripts/generate_premium_upsell_data.py
 	$(PY) scripts/generate_causal_kyc_data.py
+	$(PY) scripts/generate_assisted_cac_data.py
+	$(PY) scripts/generate_fx_sourcing_data.py
+	$(PY) scripts/generate_premium_offers_data.py
 
 test:
 	uv run pytest
