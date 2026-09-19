@@ -12,6 +12,7 @@ REQUIRED_SECTIONS = [
     "segmentation",
     "jobs",
     "referral",
+    "scale",
     "offers",
     "fx",
     "assisted",
@@ -54,6 +55,14 @@ def test_fx_cost_decreases_with_volume() -> None:
     assert len(labels) == len(values) == 9
     assert values[0] > values[-1]
     assert values[-1] <= 0.0055
+
+
+def test_anchor_ltv_cac_decreases_with_scale() -> None:
+    labels, values = bb.anchor_ltv_cac_vs_scale(bb._read("volta_anchor_cac.csv"))
+    assert labels == ["10K", "40K", "70K", "120K", "225K"]
+    assert values[0] > values[-1]
+    assert values[0] >= 3.0
+    assert values[-1] < 3.0
 
 
 def test_premium_offers_treatment_beats_control() -> None:

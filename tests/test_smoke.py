@@ -127,6 +127,11 @@ def premium_offers_output() -> str:
     return _run_main("volta_premium_offers")
 
 
+@pytest.fixture(scope="module")
+def anchor_cac_output() -> str:
+    return _run_main("volta_anchor_cac")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -216,3 +221,8 @@ def test_fx_sourcing_runs(fx_sourcing_output: str) -> None:
 def test_premium_offers_runs(premium_offers_output: str) -> None:
     assert "Analysis complete" in premium_offers_output
     assert "PARTIALLY" in premium_offers_output.upper()
+
+
+def test_anchor_cac_runs(anchor_cac_output: str) -> None:
+    assert "Analysis complete" in anchor_cac_output
+    assert "BREAKS ON PAID CAC" in anchor_cac_output.upper()

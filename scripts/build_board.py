@@ -293,6 +293,28 @@ def premium_offers_by_segment(df: pd.DataFrame) -> tuple[list[str], list[float],
     return labels, [float(v) for v in tab["control"]], [float(v) for v in tab["treatment"]]
 
 
+def anchor_ltv_cac_vs_scale(df: pd.DataFrame) -> tuple[list[str], list[float]]:
+    """Blended LTV/CAC at launch scales under cheapest-first channel allocation."""
+    ordered = df.sort_values("marginal_cac_eur").copy()
+    ordered["cum_users"] = ordered["users"].cumsum()
+    targets = [10_000, 40_000, 70_000, 120_000, 225_000]
+    labels, values = [], []
+    for target in targets:
+        sel = ordered[ordered["cum_users"] <= target].copy()
+        remaining = target - int(sel["users"].sum())
+        if remaining > 0:
+            nxt = ordered[ordered["cum_users"] > target].head(1).copy()
+            if len(nxt):
+                nxt["users"] = remaining
+                sel = pd.concat([sel, nxt], ignore_index=True)
+        users = int(sel["users"].sum())
+        blended_cac = float((sel["marginal_cac_eur"] * sel["users"]).sum()) / users
+        blended_ltv = float((sel["ltv_eur"] * sel["users"]).sum()) / users
+        labels.append(f"{target // 1000}K")
+        values.append(blended_ltv / blended_cac)
+    return labels, values
+
+
 def segment_revenue_share(df: pd.DataFrame) -> tuple[list[str], list[float]]:
     df = df.sort_values("revenue_share", ascending=False)
     return list(df["segment"]), [float(v) / 100.0 for v in df["revenue_share"]]
@@ -329,6 +351,7 @@ def build_html() -> str:
     assisted = _read("volta_assisted_cac.csv")
     fx_sourcing = _read("volta_fx_sourcing.csv")
     premium_offers = _read("volta_premium_offers.csv")
+    anchor_cac = _read("volta_anchor_cac.csv")
     profiles = _read("segment_profiles.csv")
 
     control, treatment, lift = ab_lift(ab)
@@ -340,6 +363,7 @@ def build_html() -> str:
     cac_labels, cac_vals = assisted_ltv_cac_by_segment(assisted)
     fx_labels, fx_vals = fx_cost_by_volume(fx_sourcing)
     off_labels, off_control, off_treatment = premium_offers_by_segment(premium_offers)
+    scale_labels, scale_vals = anchor_ltv_cac_vs_scale(anchor_cac)
 
     funnel_labels, funnel_vals = funnel_step_conversion(funnel)
     seg_labels, seg_vals = segment_revenue_share(profiles)
@@ -347,7 +371,7 @@ def build_html() -> str:
 
     kpis = "".join(
         [
-            _kpi("20", "analytical projects", "funnel → JTBD → causal → RAT v2"),
+            _kpi("21", "analytical projects", "funnel → JTBD → causal → RAT v2"),
             _kpi("170+", "tests · 98% coverage", "ruff · mypy · CI green"),
             _kpi(f"+{lift * 100:.2f}pp", "KYC activation lift", "A/B, p<0.0001"),
             _kpi(f"+{m3_delta * 100:.1f}pp", "M3 retention lift", "post-fix cohorts"),
@@ -441,6 +465,18 @@ def build_html() -> str:
                 bar_chart(ref_labels, ref_vals, color=COLORS["warn"]),
                 "Referral converts best in the anchor and collapses for 45+ and family budgeters — "
                 "don't scale referral spend before segment-specific incentives.",
+            ),
+            _section(
+                "scale",
+                "Market & Jobs — anchor launch at scale",
+                "Does the anchor launch P&L survive scaling to SOM?",
+                line_chart(
+                    scale_labels,
+                    [("LTV/CAC", scale_vals, COLORS["warn"])],
+                    fmt=lambda v: f"{v:.2f}×",
+                ),
+                "Cheapest-first allocation: the ≥3× gate holds to ~70K users, then paid saturation "
+                "drags LTV/CAC to 1.76× at SOM (225K) — the launch P&L breaks on paid CAC.",
             ),
             _section(
                 "offers",
@@ -607,7 +643,7 @@ def build_og_image(out: Path = OG_PATH) -> Path:
         (f"+{lift * 100:.2f}pp", "KYC activation lift"),
         (f"+{(post_curve[3] - pre_curve[3]) * 100:.1f}pp", "M3 retention"),
         (f"+{did['att'] * 100:.1f}pp", "causal DiD ATT"),
-        ("20", "analytical projects"),
+        ("21", "analytical projects"),
     ]
     x0, wid, gap = 0.06, 0.205, 0.016
     for i, (value, label) in enumerate(chips):
