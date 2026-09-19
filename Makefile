@@ -1,7 +1,7 @@
 # Volta Neobank — task runner
-# Targets: make data | test | lint | format | type | board | all
+# Targets: make data | test | lint | format | type | board | publish-board | all
 
-.PHONY: data test lint format type board all setup
+.PHONY: data test lint format type board publish-board all setup
 
 setup:
 	uv sync --all-groups
@@ -48,6 +48,14 @@ notebooks:
 
 board:
 	$(PY) scripts/build_board.py
+
+# Publish the built board into the portfolio site's demos folder (sibling repo).
+SITE_BOARD := ../NikitaBoyarkin.github.io/public/demos/volta
+
+publish-board: board
+	mkdir -p "$(SITE_BOARD)"
+	cp docs/board/volta_board.html "$(SITE_BOARD)/index.html"
+	@echo "Published board -> $(SITE_BOARD)/index.html"
 
 all: data test lint type
 	@echo "All checks passed."

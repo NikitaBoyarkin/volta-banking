@@ -469,7 +469,7 @@ footer a {{ color:var(--accent); }}
 <div class="kpis">{kpis}</div>
 {sections}
 <footer>
-  Synthetic data · seeded generators · <a href="https://github.com/NikitaBoyarkin/volta-banking">github.com/NikitaBoyarkin/volta-banking</a>
+  Synthetic data · seeded generators · <a href="https://github.com/NikitaBoyarkin/volta-banking" target="_blank" rel="noopener">github.com/NikitaBoyarkin/volta-banking</a>
   &nbsp;·&nbsp; rebuilt from <code>data/*.csv</code> by <code>make board</code>.
 </footer>
 </div>
