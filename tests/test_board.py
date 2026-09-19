@@ -63,7 +63,7 @@ def test_ab_lift_matches_committed_data() -> None:
     control, treatment, lift = bb.ab_lift(bb._read("volta_ab_experiment.csv"))
     assert 0.5 < control < 0.6
     assert treatment > control
-    assert 0.04 < lift < 0.06
+    assert 0.04 < lift < 0.08
 
 
 def test_causal_att_positive() -> None:

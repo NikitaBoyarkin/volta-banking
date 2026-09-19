@@ -21,7 +21,7 @@ PRD v2 reopens exactly one bounded window — a weekend "2.0" sprint — whose j
 
 - **The portfolio's job is conversion, not completion.** It must turn a hiring manager's attention into an interview; a museum of 17 finished scripts does not do that on its own.
 - **Breadth is saturated; the missing signals are elsewhere.** 17 scripts + 170 green tests + 98% coverage already prove engineering discipline. The 18th script adds ≈0 conversion. What is missing is (a) a face a recruiter can open **without installing anything**, and (b) a depth signal that separates this repo from the hundreds of "funnel + churn" portfolios.
-- **The central narrative claim is currently causal-sounding but correlation-only.** The story asserts the KYC progress bar *caused* +6.24pp activation → +9.2pp M3 retention. Project 3 supports the retention half with a pre/post Welch t-test — a **correlation**, not a causal estimate. A senior evaluator who reads Project 3 will notice.
+- **The central narrative claim is currently causal-sounding but correlation-only.** The story asserts the KYC progress bar *caused* +5.72pp activation → +9.2pp M3 retention. Project 3 supports the retention half with a pre/post Welch t-test — a **correlation**, not a causal estimate. A senior evaluator who reads Project 3 will notice.
 
 ### 2.2 Impact on the user
 

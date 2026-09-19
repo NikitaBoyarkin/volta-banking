@@ -234,6 +234,16 @@ def section_conclusion(hte: pd.DataFrame, gap: pd.DataFrame, chi: ChiSquareResul
     anchor_rate = hte.loc[ANCHOR_AGE, "treatment_rate"] * 100
     best = gap["gap_rate"].idxmax()
     smallest = gap["gap_pp"].idxmax()
+    if best == smallest:
+        channel_line = (
+            f"  • Channel: {best} (trust) converts {GAP_AGE} best and has the\n"
+            f"    smallest gap vs {ANCHOR_AGE} — friction is trust, not UX."
+        )
+    else:
+        channel_line = (
+            f"  • Channel: {best} converts {GAP_AGE} best; {smallest} has the\n"
+            f"    smallest gap vs {ANCHOR_AGE} — friction is trust, not UX."
+        )
     print(f"""
 Risk #4 validated: the KYC progress bar fix doesn't close {GAP_AGE}.
 
@@ -241,8 +251,7 @@ Risk #4 validated: the KYC progress bar fix doesn't close {GAP_AGE}.
     ({gap_label}) — the fix doesn't transfer.
   • The {GAP_AGE} gap persists in treatment: {GAP_AGE} {gap_rate:.1f}% vs {ANCHOR_AGE}
     {anchor_rate:.1f}% (chi-square p={chi["p"]:.4f}) — even with the fix, {GAP_AGE} converts worst.
-  • Channel: {best} (trust) converts {GAP_AGE} best and {smallest} has the
-    smallest gap vs {ANCHOR_AGE} — friction is trust, not UX.
+{channel_line}
   • Implication: don't ship a UX-only fix for {GAP_AGE}. Separate track: assisted
     onboarding (video call / in-branch KYC) + partner channel, per audit
     recommendation #3.
