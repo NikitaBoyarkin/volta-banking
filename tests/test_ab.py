@@ -41,6 +41,15 @@ def test_srm_check_balanced_split() -> None:
     assert srm["control"] == 1000
     assert srm["treatment"] == 1000
     assert srm["p"] > 0.05
+    assert srm["verdict"] == "PASS"
+
+
+def test_srm_check_verdict_blocks_on_skewed_allocation() -> None:
+    df = _make_experiment_df()  # observed 1000/1000
+    # Expecting a 90/10 split makes the balanced sample a severe mismatch.
+    srm = ab.srm_check(df, allocation={"control": 0.9, "treatment": 0.1})
+    assert srm["verdict"] == "BLOCK"
+    assert srm["small_cell"] is False
 
 
 def test_primary_analysis_recovers_known_lift() -> None:

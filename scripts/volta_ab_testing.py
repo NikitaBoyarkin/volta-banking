@@ -65,18 +65,47 @@ def calc_sample_size(
 
 
 # ── SRM / randomization ──────────────────────────────────────────────────────
-def srm_check(df: pd.DataFrame) -> dict[str, float]:
+def _srm_verdict(p: float, alpha: float) -> str:
+    """Map an SRM p-value to a PASS / WARNING / BLOCK verdict."""
+    if p > 0.05:
+        return "PASS"
+    if p > alpha:
+        return "WARNING"
+    return "BLOCK"
+
+
+def srm_check(
+    df: pd.DataFrame,
+    allocation: dict[str, float] | None = None,
+    alpha: float = 0.01,
+    min_expected: float = 5.0,
+) -> dict[str, float | str]:
+    """Chi-square goodness-of-fit of the observed split vs the expected one.
+
+    ``allocation`` maps group -> expected share (defaults to an equal split over
+    the observed groups). Returns per-group counts, chi-square, p-value and a
+    verdict: PASS (p > 0.05), WARNING (alpha < p <= 0.05), BLOCK (p <= alpha).
+    ``min_expected`` only sets a warning flag: the chi-square approximation is
+    unreliable when the smallest expected cell drops below it.
+    """
     group_counts = df.groupby("group").size()
-    total = group_counts.sum()
-    expected = np.array([total / 2, total / 2])
+    groups = list(group_counts.index)
+    total = int(group_counts.sum())
+    shares = allocation or {g: 1.0 / len(groups) for g in groups}
+    expected = np.array([total * shares[g] for g in groups], dtype=float)
     observed = group_counts.values
     chi2, p = stats.chisquare(observed, expected)
-    return {
-        "control": int(group_counts["control"]),
-        "treatment": int(group_counts["treatment"]),
-        "chi2": chi2,
-        "p": p,
+    result: dict[str, float | str] = {
+        "chi2": float(chi2),
+        "p": float(p),
+        "alpha": float(alpha),
+        "min_expected_count": float(expected.min()),
+        "small_cell": bool(expected.min() < min_expected),
+        "verdict": _srm_verdict(float(p), alpha),
     }
+    for group, count in zip(groups, observed, strict=True):
+        result[group] = int(count)
+    return result
 
 
 def covariate_balance(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -583,18 +612,23 @@ def section_sample_size() -> int:
     return n_req
 
 
-def section_srm(df: pd.DataFrame) -> dict[str, float]:
+def section_srm(df: pd.DataFrame) -> dict[str, float | str]:
     srm = srm_check(df)
     print_section("SRM CHECK (Sample Ratio Mismatch)", width=50)
     print(f"Control group:     {srm['control']:,}")
     print(f"Treatment group:   {srm['treatment']:,}")
-    print("Expected split:    50/50")
+    print("Expected split:    equal")
     print(f"Chi-square:        {srm['chi2']:.4f}")
     print(f"P-value:           {srm['p']:.4f}")
-    if srm["p"] < 0.01:
+    print(f"Verdict:           {srm['verdict']}")
+    if srm["verdict"] == "BLOCK":
         print("⚠️  SRM DETECTED — Investigate randomization!")
+    elif srm["verdict"] == "WARNING":
+        print("⚠️  Marginal SRM signal — inspect assignment logs before trusting results.")
     else:
         print("✅ No SRM — Randomization looks clean")
+    if srm["small_cell"]:
+        print("⚠️  Small expected cell (<5) — chi-square approximation is unreliable.")
 
     print_section("COVARIATE BALANCE CHECK", width=50)
     for col, table in covariate_balance(df).items():
@@ -673,7 +707,9 @@ def section_business(r: dict[str, float]) -> dict[str, float]:
     return impact
 
 
-def section_checklist(r: dict[str, float], srm: dict[str, float], impact: dict[str, float]) -> None:
+def section_checklist(
+    r: dict[str, float], srm: dict[str, float | str], impact: dict[str, float]
+) -> None:
     mde = CONSTANTS["MDE_ABSOLUTE"]
     print_section("EXPERIMENT QUALITY CHECKLIST", width=60)
     checklist = {
@@ -694,7 +730,7 @@ def section_checklist(r: dict[str, float], srm: dict[str, float], impact: dict[s
 
 
 def section_recommendation(
-    r: dict[str, float], srm: dict[str, float], seg_df: pd.DataFrame, impact: dict[str, float]
+    r: dict[str, float], srm: dict[str, float | str], seg_df: pd.DataFrame, impact: dict[str, float]
 ) -> None:
     mde = CONSTANTS["MDE_ABSOLUTE"]
     ship = (r["p_value"] < 0.05) and (r["absolute_lift"] >= mde) and (srm["p"] >= 0.01)
