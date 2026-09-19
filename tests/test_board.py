@@ -12,6 +12,7 @@ REQUIRED_SECTIONS = [
     "segmentation",
     "jobs",
     "referral",
+    "winback",
     "scale",
     "offers",
     "fx",
@@ -55,6 +56,14 @@ def test_fx_cost_decreases_with_volume() -> None:
     assert len(labels) == len(values) == 9
     assert values[0] > values[-1]
     assert values[-1] <= 0.0055
+
+
+def test_dormant_winback_roi_falls_with_depth() -> None:
+    labels, values = bb.dormant_roi_light_touch(bb._read("volta_dormant_winback.csv"))
+    assert labels == ["30-60d", "60-90d", "90-180d", "180d+"]
+    assert values[0] > values[-1]
+    assert values[0] >= 1.0
+    assert values[-1] < 1.0
 
 
 def test_anchor_ltv_cac_decreases_with_scale() -> None:

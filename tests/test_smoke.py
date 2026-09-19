@@ -132,6 +132,11 @@ def anchor_cac_output() -> str:
     return _run_main("volta_anchor_cac")
 
 
+@pytest.fixture(scope="module")
+def dormant_winback_output() -> str:
+    return _run_main("volta_dormant_winback")
+
+
 def test_funnel_runs(funnel_output: str) -> None:
     assert len(funnel_output) > 100
 
@@ -226,3 +231,8 @@ def test_premium_offers_runs(premium_offers_output: str) -> None:
 def test_anchor_cac_runs(anchor_cac_output: str) -> None:
     assert "Analysis complete" in anchor_cac_output
     assert "BREAKS ON PAID CAC" in anchor_cac_output.upper()
+
+
+def test_dormant_winback_runs(dormant_winback_output: str) -> None:
+    assert "Analysis complete" in dormant_winback_output
+    assert "TARGET THE LIGHT TOUCH" in dormant_winback_output.upper()

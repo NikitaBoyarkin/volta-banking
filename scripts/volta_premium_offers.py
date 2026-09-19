@@ -99,6 +99,8 @@ def two_proportion_ztest(n1: int, x1: int, n2: int, x2: int) -> tuple[float, flo
     p1, p2 = x1 / n1, x2 / n2
     p_pool = (x1 + x2) / (n1 + n2)
     se = math.sqrt(p_pool * (1 - p_pool) * (1 / n1 + 1 / n2))
+    if se == 0:
+        return 0.0, 1.0
     z = (p1 - p2) / se
     return float(z), float(2 * (1 - stats.norm.cdf(abs(z))))
 

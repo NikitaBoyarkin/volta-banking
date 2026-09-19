@@ -34,6 +34,7 @@ data:
 	$(PY) scripts/generate_fx_sourcing_data.py
 	$(PY) scripts/generate_premium_offers_data.py
 	$(PY) scripts/generate_anchor_cac_data.py
+	$(PY) scripts/generate_dormant_winback_data.py
 
 test:
 	uv run pytest

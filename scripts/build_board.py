@@ -293,6 +293,24 @@ def premium_offers_by_segment(df: pd.DataFrame) -> tuple[list[str], list[float],
     return labels, [float(v) for v in tab["control"]], [float(v) for v in tab["treatment"]]
 
 
+def dormant_roi_light_touch(df: pd.DataFrame) -> tuple[list[str], list[float]]:
+    """ROI of the light-touch arm by dormancy bucket."""
+    order = ["30-60d", "60-90d", "90-180d", "180d+"]
+    ltv = {"30-60d": 85.0, "60-90d": 75.0, "90-180d": 62.0, "180d+": 50.0}
+    incr_cost = (2.50 - 0.50) * 10_000
+    values = []
+    for bucket in order:
+        t = df[(df["group"] == "light_touch") & (df["dormancy_bucket"] == bucket)][
+            "reactivated_60d"
+        ].mean()
+        c = df[(df["group"] == "control") & (df["dormancy_bucket"] == bucket)][
+            "reactivated_60d"
+        ].mean()
+        recovered = (t - c) * 10_000 * ltv[bucket]
+        values.append(float(recovered / incr_cost))
+    return order, values
+
+
 def anchor_ltv_cac_vs_scale(df: pd.DataFrame) -> tuple[list[str], list[float]]:
     """Blended LTV/CAC at launch scales under cheapest-first channel allocation."""
     ordered = df.sort_values("marginal_cac_eur").copy()
@@ -352,6 +370,7 @@ def build_html() -> str:
     fx_sourcing = _read("volta_fx_sourcing.csv")
     premium_offers = _read("volta_premium_offers.csv")
     anchor_cac = _read("volta_anchor_cac.csv")
+    dormant = _read("volta_dormant_winback.csv")
     profiles = _read("segment_profiles.csv")
 
     control, treatment, lift = ab_lift(ab)
@@ -364,6 +383,7 @@ def build_html() -> str:
     fx_labels, fx_vals = fx_cost_by_volume(fx_sourcing)
     off_labels, off_control, off_treatment = premium_offers_by_segment(premium_offers)
     scale_labels, scale_vals = anchor_ltv_cac_vs_scale(anchor_cac)
+    dormant_labels, dormant_vals = dormant_roi_light_touch(dormant)
 
     funnel_labels, funnel_vals = funnel_step_conversion(funnel)
     seg_labels, seg_vals = segment_revenue_share(profiles)
@@ -371,7 +391,7 @@ def build_html() -> str:
 
     kpis = "".join(
         [
-            _kpi("21", "analytical projects", "funnel → JTBD → causal → RAT v2"),
+            _kpi("22", "analytical projects", "funnel → JTBD → causal → RAT v2"),
             _kpi("170+", "tests · 98% coverage", "ruff · mypy · CI green"),
             _kpi(f"+{lift * 100:.2f}pp", "KYC activation lift", "A/B, p<0.0001"),
             _kpi(f"+{m3_delta * 100:.1f}pp", "M3 retention lift", "post-fix cohorts"),
@@ -465,6 +485,16 @@ def build_html() -> str:
                 bar_chart(ref_labels, ref_vals, color=COLORS["warn"]),
                 "Referral converts best in the anchor and collapses for 45+ and family budgeters — "
                 "don't scale referral spend before segment-specific incentives.",
+            ),
+            _section(
+                "winback",
+                "Market & Jobs — dormant 45+ win-back",
+                "Can assisted win-back recover dormant 45+ profitably?",
+                bar_chart(
+                    dormant_labels, dormant_vals, fmt=lambda v: f"{v:.2f}×", color=COLORS["ok"]
+                ),
+                "Assisted reactivation works (UX was the barrier), but ROI is sharp: light-touch pays "
+                "only on the 30–90 day dormant; full human calls never pay at 45+ ARPU.",
             ),
             _section(
                 "scale",
@@ -643,7 +673,7 @@ def build_og_image(out: Path = OG_PATH) -> Path:
         (f"+{lift * 100:.2f}pp", "KYC activation lift"),
         (f"+{(post_curve[3] - pre_curve[3]) * 100:.1f}pp", "M3 retention"),
         (f"+{did['att'] * 100:.1f}pp", "causal DiD ATT"),
-        ("21", "analytical projects"),
+        ("22", "analytical projects"),
     ]
     x0, wid, gap = 0.06, 0.205, 0.016
     for i, (value, label) in enumerate(chips):
