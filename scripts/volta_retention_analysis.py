@@ -31,7 +31,7 @@ import pandas as pd
 from scipy import stats
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, save_chart_report
 
 FIX_CUTOFF = "2024-09"  # cohorts >= this date are "post-fix"
 
@@ -195,14 +195,28 @@ def plot_retention_curves(out: Path) -> Path:
         fig,
         title="Retention Curves — Free vs Premium Plans",
         description="Percentage of users still active each month, comparing Free and Premium plans before/after the KYC fix.",
-        findings=[
-            f"Premium users retain far better: M6 = {prem_m6_post:.0f}% vs Free M6 = {free_m6_post:.0f}%.",
-            f"Post-fix KYC improvement lifts both curves (Free +{(PARAMS['free_post_curve'][6] - PARAMS['free_pre_curve'][6]) * 100:.0f}pp at M6).",
-            f"Premium LTV is {ltvs_ratio():.1f}× Free — driven by both higher ARPU and higher retention.",
-            "Strategy: target premium upgrades for high-intent Free users in months 1–2.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="Retention Curves — Free vs Premium Plans",
+        description_ru=(
+            "Доля активных пользователей по месяцам: тарифы Free и Premium до и после починки KYC."
+        ),
+        findings=[
+            f"Premium удерживаются заметно лучше: M6 = {prem_m6_post:.0f}% "
+            f"против Free M6 = {free_m6_post:.0f}%.",
+            f"Починка KYC поднимает обе кривые "
+            f"(Free +{(PARAMS['free_post_curve'][6] - PARAMS['free_pre_curve'][6]) * 100:.0f} "
+            "п.п. на M6).",
+            f"LTV Premium в {ltvs_ratio():.1f}× выше Free — за счёт и более высокого ARPU, "
+            "и лучшего удержания.",
+            "Стратегия: нацелить апгрейды на Premium среди high-intent Free-пользователей "
+            "в первые 1–2 месяца.",
+        ],
+        script="scripts/volta_retention_analysis.py",
+        source="data/cohort_retention_matrix.csv",
+    )
 
 
 def ltvs_ratio() -> float:

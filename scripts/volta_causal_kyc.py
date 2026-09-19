@@ -44,7 +44,7 @@ from sklearn.linear_model import LogisticRegression
 
 from generate_causal_kyc_data import ATT_ACTIVATED, ATT_M1_TOTAL, ATT_M3_TOTAL
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, save_chart_report
 
 CUTOFF = "2024-09"
 PLACEBO_CUTOFF = "2024-01"  # fake cutoff inside the pre-period
@@ -296,14 +296,26 @@ def plot_trends(df: pd.DataFrame, out: Path) -> Path:
         fig,
         title="Causal layer — parallel trends & the KYC fix",
         description="M3 retention by signup cohort, treated (in-app) vs comparison (partner) KYC flow.",
-        findings=[
-            "Pre-period gaps are flat → parallel trends are plausible.",
-            "At the 2024-09 cutoff the treated flow jumps; the comparison does not.",
-            "The DiD estimate isolates that jump from the shared monthly drift.",
-            "Synthetic data: the generator injects the true effect, so this is a methods check.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="Causal layer — parallel trends & the KYC fix",
+        description_ru=(
+            "M3-удержание по когортам регистрации: третируемый поток (in-app KYC) "
+            "против сравнения (партнёрский KYC)."
+        ),
+        findings=[
+            "До изменения разрывы между группами стабильны → предпосылка "
+            "о параллельных трендах правдоподобна.",
+            "На точке 2024-09 у третируемого потока происходит скачок, у сравнения — нет.",
+            "DiD-оценка изолирует этот скачок от общего месячного дрейфа.",
+            "Данные синтетические: генератор закладывает истинный эффект, "
+            "поэтому это проверка метода.",
+        ],
+        script="scripts/volta_causal_kyc.py",
+        source="data/volta_causal_kyc.csv",
+    )
 
 
 # ── Sections ─────────────────────────────────────────────────────────────────

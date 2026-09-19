@@ -36,7 +36,7 @@ from scipy import stats
 from scipy.stats import norm
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, save_chart_report
 
 N_BOOT = 2000
 BOOT_SEED = 42
@@ -512,19 +512,30 @@ def plot_ab_conversion(r: dict[str, float], out: Path) -> Path:
             fontweight="bold",
         )
 
-    sig_text = "significant" if r["p_value"] < 0.05 else "not significant"
+    sig_text = "значим" if r["p_value"] < 0.05 else "не значим"
     add_chart_context(
         fig,
         title="KYC Progress Bar A/B Test — Conversion Comparison",
         description="KYC start → complete conversion rate by experiment arm with 95% confidence intervals.",
-        findings=[
-            f"Treatment: {treatment_rate:.2f}% vs Control: {control_rate:.2f}% ({r['absolute_lift']:+.2%} lift).",
-            f"95% CI for the lift: [{r['ci_lower']:+.2%}, {r['ci_upper']:+.2%}].",
-            f"Result is statistically {sig_text} (Z={r['z_score']:.2f}, p={r['p_value']:.4f}).",
-            "Ship-gate passed: p<0.05, lift ≥ +5pp MDE, no SRM → rollout to 100%.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="KYC Progress Bar A/B Test — Conversion Comparison",
+        description_ru=(
+            "Конверсия KYC start → complete по веткам эксперимента "
+            "с 95%-ми доверительными интервалами."
+        ),
+        findings=[
+            f"Treatment: {treatment_rate:.2f}% против Control: {control_rate:.2f}% "
+            f"(лифт {r['absolute_lift']:+.2%}).",
+            f"95%-й ДИ лифта: [{r['ci_lower']:+.2%}, {r['ci_upper']:+.2%}].",
+            f"Результат статистически {sig_text} (Z={r['z_score']:.2f}, p={r['p_value']:.4f}).",
+            "Гейт выката пройден: p<0.05, лифт ≥ +5 п.п. MDE, SRM нет → раскатка на 100%.",
+        ],
+        script="scripts/volta_ab_testing.py",
+        source="data/volta_ab_experiment.csv",
+    )
 
 
 # ── Business impact ───────────────────────────────────────────────────────────

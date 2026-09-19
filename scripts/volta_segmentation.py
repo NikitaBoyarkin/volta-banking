@@ -33,7 +33,7 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, save_chart_report
 
 KMEANS_SEED = 42
 
@@ -376,14 +376,24 @@ def plot_segment_pareto(seg_summary: pd.DataFrame, out: Path) -> Path:
         fig,
         title="Segment Revenue Concentration (Pareto)",
         description="Each segment's share of total monthly revenue plus the cumulative contribution curve.",
-        findings=[
-            f"'{segments[0]}' alone drives {rev_share[0]:.0f}% of revenue while being {order['n_users'].iloc[0] / order['n_users'].sum() * 100:.0f}% of users.",
-            f"{users_to_80:.0f}% of users generate ≥80% of revenue (reached at '{segments[idx80]}').",
-            "Revenue is highly concentrated: protect Power Users and upsell Growth/Casual segments.",
-            f"Dormant users still contribute {rev_share[-1]:.0f}% — win-back campaigns have measurable upside.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="Segment Revenue Concentration (Pareto)",
+        description_ru=("Доля каждого сегмента в месячной выручке и кумулятивная кривая вклада."),
+        findings=[
+            f"Сегмент «{segments[0]}» даёт {rev_share[0]:.0f}% выручки, занимая "
+            f"{order['n_users'].iloc[0] / order['n_users'].sum() * 100:.0f}% пользователей.",
+            f"{users_to_80:.0f}% пользователей приносят ≥80% выручки "
+            f"(порог достигается на «{segments[idx80]}»).",
+            "Выручка сильно сконцентрирована: защищать Power Users и апгрейдить Growth/Casual.",
+            f"Dormant-сегмент всё ещё приносит {rev_share[-1]:.0f}% — "
+            "у win-back кампаний есть измеримый потенциал.",
+        ],
+        script="scripts/volta_segmentation.py",
+        source="data/segment_profiles.csv",
+    )
 
 
 def assign_segment_names(df: pd.DataFrame, optimal_k: int) -> tuple[pd.DataFrame, dict[int, str]]:

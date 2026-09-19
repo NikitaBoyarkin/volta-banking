@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, ru_num, save_chart_report
 
 SEGMENT_ORDER = [
     "travelers",
@@ -224,14 +224,25 @@ def plot_fx_break_even(out: Path) -> Path:
         fig,
         title="Traveler FX Transaction — Break-even Waterfall",
         description="Revenue and cost components of a single €100 FX transaction for the traveler segment.",
-        findings=[
-            f"Net margin is €{net_margin:+.2f} per €100 FX tx — travelers lose money on every transaction.",
-            f"Break-even requires FX cost to drop from 1.00% to {be_cost:.2f}% (negotiate interbank rates).",
-            f"Alternative: raise spread from 0.40% to {be_spread:.2f}% — but this breaks the 'honest rate' job.",
-            "Don't scale travelers before fixing unit economics; the loss grows linearly with volume.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="Traveler FX Transaction — Break-even Waterfall",
+        description_ru="Выручка и издержки одной FX-операции на €100 для тревел-сегмента.",
+        findings=[
+            f"Чистая маржа — €{ru_num(net_margin, 2)} с каждых €100 FX-операции: "
+            "на тревел-сегменте теряем деньги на каждой транзакции.",
+            f"Безубыточность требует снизить FX-cost с 1,00% до {ru_num(be_cost, 2)}% "
+            "(договориться об интербанковских ставках).",
+            f"Альтернатива — поднять спред с 0,40% до {ru_num(be_spread, 2)}%, "
+            "но это ломает обещание «честного курса».",
+            "Не масштабировать тревел-сегмент до починки юнит-экономики: "
+            "убыток растёт линейно с объёмом.",
+        ],
+        script="scripts/volta_unit_economics.py",
+        source="data/volta_unit_economics.csv",
+    )
 
 
 # ── Sections ─────────────────────────────────────────────────────────────────
