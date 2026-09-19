@@ -14,8 +14,10 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import FuncFormatter
 
 from utils.common import OUTPUT_DIR, data_path, print_section, print_subsection, setup
+from utils.viz_helpers import PALETTE, ru_num, save_chart_report
 
 TOP_MERCHANTS = 10
 
@@ -81,14 +83,35 @@ def plot_category_spend(cat: pd.DataFrame, out: Path) -> Path:
 
 
 def plot_monthly_trend(monthly: pd.Series, out: Path) -> Path:
-    plt.figure(figsize=(8, 4.5))
-    plt.plot(monthly.index, monthly.values, marker="o", color="#55a868")
-    plt.ylabel("Spend (EUR)")
-    plt.title("Monthly Spend Trend")
-    plt.tight_layout()
-    plt.savefig(out, dpi=120)
-    plt.close()
-    return out
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.plot(monthly.index, monthly.values, marker="o", color=PALETTE[2])
+    ax.set_ylabel("Spend (EUR)")
+    ax.set_title("Monthly Spend Trend")
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"€{x / 1000:.0f}k"))
+    fig.tight_layout()
+
+    peak, peak_val = monthly.idxmax(), monthly.max()
+    first_val, last_val = monthly.iloc[0], monthly.iloc[-1]
+    change = (last_val / first_val - 1) * 100
+    mean_val = monthly.mean()
+    deviation_pct = max(abs(peak_val - mean_val), abs(monthly.min() - mean_val)) / mean_val * 100
+    return save_chart_report(
+        fig,
+        out,
+        title="Monthly Spend Trend",
+        description_ru="Помесячный объём трат по завершённым транзакциям.",
+        findings=[
+            f"Пик трат — {peak:%Y-%m} (€{ru_num(peak_val)}).",
+            f"С {monthly.index[0]:%Y-%m} по {monthly.index[-1]:%Y-%m} месячный объём "
+            f"изменился на {ru_num(change, 1)}%.",
+            f"Средний месячный объём — €{ru_num(mean_val)}.",
+            f"Колебания держатся в коридоре €{ru_num(monthly.min())}–€{ru_num(peak_val)} "
+            f"(±{ru_num(deviation_pct)}% от среднего): выраженной сезонности нет, "
+            "ноябрь–декабрь — локальное снижение.",
+        ],
+        script="scripts/volta_spend_analysis.py",
+        source="data/volta_transactions.csv",
+    )
 
 
 def section_setup(df: pd.DataFrame) -> None:

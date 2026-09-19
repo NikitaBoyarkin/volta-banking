@@ -19,19 +19,28 @@ OUTPUT_DIR = REPO_ROOT / "outputs"
 
 def setup(
     *,
-    style: str = "dark_background",
+    style: str | None = None,
     float_format: str = "{:.2f}",
 ) -> None:
     """Initialise display + warnings for an analysis script.
 
     Warnings are scoped to Future/UserWarning only (not blanket-suppressed) so
     real pandas/sklearn issues are not hidden during development.
+
+    When ``style`` is None the shared light theme from :mod:`utils.viz_helpers`
+    is applied (README-friendly). Pass an explicit matplotlib style name to
+    override.
     """
     import matplotlib.pyplot as plt
 
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
-    plt.style.use(style)
+    if style is None:
+        from utils.viz_helpers import apply_style
+
+        apply_style()
+    else:
+        plt.style.use(style)
     pd.set_option("display.float_format", float_format.format)
 
 

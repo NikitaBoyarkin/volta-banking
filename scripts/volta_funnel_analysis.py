@@ -35,7 +35,7 @@ import seaborn as sns
 from scipy import stats
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart
+from utils.viz_helpers import add_chart_context, ru_num, save_chart_report
 
 # ── Funnel definition ────────────────────────────────────────────────────────
 FUNNEL_STEPS = [
@@ -486,14 +486,29 @@ def plot_funnel_waterfall(metrics: dict[str, list[float]], out: Path) -> Path:
         fig,
         title="Onboarding Funnel — Absolute User Drop-off",
         description="Each bar shows how many users are lost between two consecutive funnel steps.",
-        findings=[
-            f"{biggest_abs_transition} loses the most users in absolute terms ({biggest_abs_drop:,}).",
-            f"KYC Complete has the lowest step-conversion ({metrics['step_conv'][3]:.1f}%), making it the biggest relative bottleneck.",
-            f"Only {metrics['counts'][-1]:,} of {metrics['counts'][0]:,} installs ({metrics['overall_conv'][-1]:.1f}%) complete a first transaction.",
-            "Priority: fix KYC UX first (highest relative drop), then simplify the biggest absolute loss stage.",
-        ],
     )
-    return save_chart(fig, out)
+    return save_chart_report(
+        fig,
+        out,
+        title="Onboarding Funnel — Absolute User Drop-off",
+        description_ru=(
+            "Каждый столбец показывает, сколько пользователей теряется между двумя "
+            "соседними шагами воронки онбординга."
+        ),
+        findings=[
+            f"Переход «{biggest_abs_transition}» теряет больше всего пользователей "
+            f"в абсолютных числах ({ru_num(biggest_abs_drop)}).",
+            f"У шага KYC Complete самая низкая конверсия шага "
+            f"({ru_num(metrics['step_conv'][3], 1)}%) — главное относительное узкое место.",
+            f"Только {ru_num(metrics['counts'][-1])} из {ru_num(metrics['counts'][0])} "
+            f"установок ({ru_num(metrics['overall_conv'][-1], 1)}%) доходят до первой "
+            f"транзакции.",
+            "Приоритет: сначала починить KYC UX (максимальный относительный провал), "
+            "затем упростить этап с наибольшей абсолютной потерей.",
+        ],
+        script="scripts/volta_funnel_analysis.py",
+        source="data/volta_funnel_data.csv",
+    )
 
 
 # ── Narrative section printers ──────────────────────────────────────────────
