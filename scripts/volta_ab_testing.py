@@ -250,6 +250,46 @@ def cuped_variance_reduction(y: np.ndarray, x_pre: np.ndarray, treatment: np.nda
     return (1 - var_cuped / var_y) * 100
 
 
+def cuped_lin_ols(y: np.ndarray, x_pre: np.ndarray, treatment: np.ndarray) -> dict[str, float]:
+    """Lin (2013) fully-interacted CUPED via OLS with HC2 standard errors.
+
+    Fits ``y ~ 1 + x_c + T + T:x_c`` (``x_c`` = covariate centred on its mean).
+    The treatment effect is the coefficient on ``T``, evaluated at the mean
+    covariate; the interaction lets the covariate slope differ by arm. Returns
+    the adjusted effect with a robust CI, the per-arm slopes (theta) and the
+    variance reduction vs the unadjusted difference in means.
+    """
+    y = np.asarray(y, dtype=float)
+    x = np.asarray(x_pre, dtype=float)
+    t = np.asarray(treatment, dtype=float)
+    xc = x - x.mean()
+    design = np.column_stack([np.ones_like(t), xc, t, t * xc])
+    beta, *_ = np.linalg.lstsq(design, y, rcond=None)
+    resid = y - design @ beta
+    xtx_inv = np.linalg.inv(design.T @ design)
+    leverage = np.einsum("ij,jk,ik->i", design, xtx_inv, design)
+    omega = resid**2 / (1 - leverage)
+    cov = xtx_inv @ (design.T @ (omega[:, None] * design)) @ xtx_inv
+    ate = float(beta[2])
+    se = float(np.sqrt(cov[2, 2]))
+    control = y[t == 0]
+    treated = y[t == 1]
+    unadj_var = float(
+        np.var(control, ddof=1) / len(control) + np.var(treated, ddof=1) / len(treated)
+    )
+    reduction = (1 - se**2 / unadj_var) * 100 if unadj_var > 0 else 0.0
+    return {
+        "ate": ate,
+        "se": se,
+        "ci_lower": ate - 1.96 * se,
+        "ci_upper": ate + 1.96 * se,
+        "theta_control": float(beta[1]),
+        "theta_treatment": float(beta[1] + beta[3]),
+        "unadjusted_ate": float(treated.mean() - control.mean()),
+        "variance_reduction_pct": float(reduction),
+    }
+
+
 # ── Bucketing ────────────────────────────────────────────────────────────────
 def make_buckets(
     user_ids: np.ndarray, values: np.ndarray, n_buckets: int = 100, agg: str = "sum"
@@ -833,6 +873,11 @@ def section_cuped(df: pd.DataFrame) -> None:
     print(f"Variance reduction:   {var_reduction:.1f}%  (Var(Y_cuped) = Var(Y) * (1 - rho^2))")
     print(f"Raw p-value:    {p_raw:.4f}")
     print(f"CUPED p-value:  {p_cuped:.4f}  (lower variance → higher sensitivity)")
+    lin = cuped_lin_ols(y, x_pre, treatment)
+    print(
+        f"Lin-OLS ATE:    {lin['ate']:+.4f} (SE {lin['se']:.4f}), "
+        f"variance reduction {lin['variance_reduction_pct']:.1f}%"
+    )
     print("   theta computed on control group only (standard CUPED); computing it")
     print("   on the full sample would contaminate the estimate with the treatment effect.")
 

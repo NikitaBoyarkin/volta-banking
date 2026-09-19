@@ -107,6 +107,18 @@ def test_cuped_variance_reduction_positive_with_correlated_covariate() -> None:
     assert reduction_noise < 5.0
 
 
+def test_cuped_lin_ols_recovers_effect_and_reduces_variance() -> None:
+    rng = np.random.default_rng(0)
+    n = 4000
+    x_pre = rng.normal(0, 1, n)
+    treatment = np.r_[np.zeros(n // 2), np.ones(n // 2)]
+    y = 1.0 + 0.5 * treatment + 2.0 * x_pre + rng.normal(0, 0.3, n)
+    res = ab.cuped_lin_ols(y, x_pre, treatment)
+    assert abs(res["ate"] - 0.5) < 0.05
+    assert res["ci_lower"] < res["ate"] < res["ci_upper"]
+    assert res["variance_reduction_pct"] > 50.0
+
+
 def test_aa_test_type1_rate_in_range() -> None:
     df = _make_experiment_df(n_control=500, n_treatment=500)
     aa = ab.aa_test(df, n_iter=200, seed=42)
