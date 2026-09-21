@@ -58,11 +58,11 @@
   <h2>2 · A/B Test — validate the fix</h2>
   <div class="row">
     <ul>
-      <li>KYC progress bar: control 55.8% → treatment 62.1%</li>
-      <li>+6.24pp, Z=6.35, p&lt;0.0001, 95% CI [+4.26, +8.16]pp</li>
+      <li>KYC progress bar: control 55.8% → treatment 61.5%</li>
+      <li>+5.72pp, Z=5.82, p&lt;0.0001, 95% CI [+3.78, +7.66]pp</li>
       <li>No SRM (p=1.00); covariate balance confirmed</li>
       <li>Method: CUPED, AA-test (type-I=0.050), sensitivity at MDE</li>
-      <li>Business impact: <b>+€716K/yr</b></li>
+      <li>Business impact: <b>+€656K/yr</b></li>
     </ul>
     <img src="../outputs/ab_power_curve.png" alt="power" style="max-width:400px">
   </div>
@@ -98,7 +98,7 @@
   <h2>5-9 · Extended portfolio</h2>
   <div class="grid">
     <div class="card"><div class="k">Churn prediction</div><div class="v">RF +0.03</div><div class="d">ROC-AUC over logistic; top driver = inactivity</div></div>
-    <div class="card"><div class="k">RFM</div><div class="v">6 segs</div><div class="d">Champions→Lost lifecycle scoring</div></div>
+    <div class="card"><div class="k">RFM</div><div class="v">7 segs</div><div class="d">Champions→Lost lifecycle scoring</div></div>
     <div class="card"><div class="k">CLV</div><div class="v">3 methods</div><div class="d">historical · retention-curve · Gamma-Gamma</div></div>
     <div class="card"><div class="k">Attribution</div><div class="v">4 models</div><div class="d">first/last/linear/Shapley — referral wins</div></div>
     <div class="card"><div class="k">Anomaly</div><div class="v">IF F1 .50</div><div class="d">Isolation Forest beats single-amount detectors</div></div>

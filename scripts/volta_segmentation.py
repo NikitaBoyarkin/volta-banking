@@ -12,7 +12,7 @@ projects with PCA, and proposes per-segment monetization scenarios.
 
 Portfolio context:
 - Project 1: Identified KYC as the critical funnel bottleneck
-- Project 2: Proved the KYC progress bar fix works (+6.24pp, p<0.0001)
+- Project 2: Proved the KYC progress bar fix works (+5.72pp, p<0.0001)
 - Project 3: Showed retention improved post-fix and revealed the Premium/Free
   LTV gap (ARPU × retention decomposition)
 - Project 4 (this): Segments users and designs per-segment monetization strategy
@@ -927,7 +927,7 @@ PORTFOLIO = [
     {
         "project": "Project 2 — A/B Testing",
         "skill": "Solution Validation",
-        "output": "Proved KYC progress bar works (+6.24pp, Z=6.35, p<0.0001)",
+        "output": "Proved KYC progress bar works (+5.72pp, Z=5.82, p<0.0001)",
         "business_impact": "Enabled confident full-fleet rollout",
     },
     {

@@ -6,7 +6,7 @@ Industry: Fintech / Digital Banking
 Type: Causal inference · Difference-in-differences · Sensitivity
 
 The portfolio's central narrative claims the Sep 2024 KYC progress-bar fix
-"caused" +6.24pp activation → +9.2pp M3 retention. Project 3 supports the
+"caused" +5.72pp activation → +9.2pp M3 retention. Project 3 supports the
 retention half with a pre/post Welch t-test — which is a *correlation*, not a
 causal estimate. This script tests the same claim with a
 difference-in-differences design:

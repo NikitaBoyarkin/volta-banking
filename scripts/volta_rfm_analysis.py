@@ -2,7 +2,7 @@
 
 Computes Recency / Frequency / Monetary value from the transaction log, scores
 each customer 1-5 on each dimension, and assigns them to meaningful lifecycle
-segments (Champions, Loyal, Potential, New, At Risk, Lost). Visualizes segment
+segments (Champions, Loyal, Potential, New, At Risk, Lost, plus a "Needs Attention" fallback — up to 7 labels). Visualizes segment
 sizes and the average R/F/M profile per segment.
 
 Run:  uv run python volta_rfm_analysis.py
