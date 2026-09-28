@@ -9,7 +9,7 @@
 
 ![Аналитический борд Volta Neobank](docs/board/og_image.png)
 
-Двадцать два проекта ведут вымышленный необанк Volta от первой установки до
+22 проекта ведут вымышленный необанк Volta от первой установки до
 удержания. Сначала воронка онбординга вскрывает узкое место на KYC, потом
 A/B-тест проверяет, что его правда чинят, а когортный retention и каузальный
 тест difference-in-differences — что эффект выжил через месяцы. Дальше отток,
@@ -102,7 +102,7 @@ PYTHONPATH=.:scripts uv run python scripts/volta_funnel_analysis.py
 | Отчёты | openpyxl, pdfplumber, pypdf |
 | Инструменты | uv, ruff, mypy, pytest, pre-commit |
 
-```
+```text
 volta-banking/
 ├── scripts/    анализы volta_*.py и seeded-генераторы данных
 ├── tests/      pytest: unit-тесты и smoke на каждый main()

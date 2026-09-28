@@ -320,7 +320,7 @@ The repo is complete and validated (all requirements met, CI green). This PRD fi
 ## 7. Technical Considerations
 
 ### Архитектура
-```
+```text
 utils/common.py (data_path, OUTPUT_DIR, CONSTANTS, setup, print_section)
         │  shared helpers imported by
         ▼
@@ -381,7 +381,7 @@ Not applicable — the repo is a portfolio, not a deployed system. Change contro
 **Validation Checkpoint:** CI green after each maintenance pass; script count stable at 12.
 
 ### Зависимости задач
-```
+```text
 Phase 1 → Phase 2 → Phase 3 (sequential narrative build)
 Phase 4: independent, recurring
 Critical Path: none (all work complete; Phase 4 is periodic upkeep)

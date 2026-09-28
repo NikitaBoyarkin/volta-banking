@@ -255,7 +255,7 @@ The bounded reopen grants exactly three exceptions to v1's freeze: **REQ-201** (
 - Placement: `docs/board/volta_board.html` (repo) and linked from the existing landing page `Personal_Projects.github.io/projects/volta/`.
 
 ### 8.4 Architecture (unchanged)
-```
+```text
 utils/common.py (data_path, OUTPUT_DIR, CONSTANTS, setup, print_section)
         │
         ▼
