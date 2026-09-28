@@ -226,16 +226,26 @@ def plot_conversion(df: pd.DataFrame, out: Path) -> Path:
         title="Segment-Specific Premium Offers — Conversion by Segment × Arm",
         description="Generic upsell (control) vs segment-specific offer (treatment).",
     )
+    lift_df = lift_by_segment(df)
+    gap_pos = sum(float(lift_df.loc[s, "lift_pp"]) > 0 for s in GAP_SEGMENTS)
+    anchor_lift_pp = float(lift_df.loc[ANCHOR_SEGMENT, "lift_pp"])
+    anchor_p = float(lift_df.loc[ANCHOR_SEGMENT, "p"])
+    anchor_noise = "в пределах шума" if anchor_p >= ALPHA else "значим"
+    gap45_treat = float(tab.loc[GAP_SEGMENTS[0], TREATMENT])
+    anchor_control = float(tab.loc[ANCHOR_SEGMENT, CONTROL])
+    gap_multiple = anchor_control / gap45_treat if gap45_treat else float("nan")
     return save_chart_report(
         fig,
         out,
         title="Segment-Specific Premium Offers — Conversion by Segment × Arm",
         description_ru="Конверсия в Premium: generic-апселл (control) vs сегментный оффер (treatment).",
         findings=[
-            "Сегментные офферы поднимают конверсию во всех gap-сегментах, "
-            "но не дотягивают до якоря.",
-            "Якорь почти не двигается (+0,9 п.п.): его уже обслуживает generic-оффер.",
-            "Остаточный разрыв: 45+ treatment всё ещё в ~4 раза ниже control якоря.",
+            f"Сегментные офферы поднимают конверсию в {gap_pos}/{len(GAP_SEGMENTS)} gap-сегментах, "
+            "но treatment не дотягивает до якоря.",
+            f"Якорь: lift {anchor_lift_pp:+.1f} п.п. (p={anchor_p:.2f}) — {anchor_noise}; "
+            "его уже обслуживает generic-оффер.",
+            f"Остаточный разрыв: 45+ treatment ({gap45_treat:.1f}%) всё ещё в "
+            f"{gap_multiple:.1f} раза ниже control якоря ({anchor_control:.1f}%).",
             "Вывод: фикс работает, но закрывает разрыв лишь частично.",
         ],
         script="scripts/volta_premium_offers.py",
@@ -272,16 +282,26 @@ def plot_lift(lift: pd.DataFrame, out: Path) -> Path:
         title="Segment-Specific Premium Offers — Treatment Lift by Segment",
         description="Absolute lift in premium conversion (pp) with 95% confidence intervals.",
     )
+    anchor_lift_pp = float(lift.loc[ANCHOR_SEGMENT, "lift_pp"])
+    anchor_p = float(lift.loc[ANCHOR_SEGMENT, "p"])
+    anchor_noise = "в пределах шума" if anchor_p >= ALPHA else "значим"
+    gap_ratio = [
+        float(lift.loc[s, "lift_pp"]) / anchor_lift_pp if anchor_lift_pp else float("nan")
+        for s in GAP_SEGMENTS
+    ]
+    n_holm_sig = sum(holm([float(lift.loc[s, "p"]) for s in GAP_SEGMENTS]))
     return save_chart_report(
         fig,
         out,
         title="Segment-Specific Premium Offers — Treatment Lift by Segment",
         description_ru="Абсолютный lift конверсии (п.п.) с 95% доверительными интервалами.",
         findings=[
-            "Gap-сегменты дают lift в 3–5 раз больше якоря — сегментный оффер "
-            "работает именно там, где generic провалился.",
-            "Все gap-lift значимы после Holm-коррекции.",
-            "Якорь: lift в пределах шума — generic-оффер ему достаточен.",
+            f"Gap-сегменты дают lift в {min(gap_ratio):.1f}–{max(gap_ratio):.1f} раз больше якоря "
+            f"(якорь: {anchor_lift_pp:+.2f} п.п.) — сегментный оффер работает именно там, "
+            "где generic провалился.",
+            f"После Holm-коррекции значимы {n_holm_sig}/{len(GAP_SEGMENTS)} gap-lift.",
+            f"Якорь: lift {anchor_lift_pp:+.2f} п.п. (p={anchor_p:.2f}) — {anchor_noise}; "
+            "generic-оффер ему достаточен.",
             "Сегментный оффер — не «серебряная пуля»: он сужает разрыв, но не убирает его.",
         ],
         script="scripts/volta_premium_offers.py",

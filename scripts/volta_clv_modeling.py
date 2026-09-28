@@ -82,8 +82,8 @@ def _gamma_gamma_mle(x: np.ndarray, s: np.ndarray) -> tuple[float, float, float]
                 - special.gammaln(p * x)
                 - special.gammaln(q)
                 + q * np.log(gamma)
-                + p * x * np.log(x)
-                - (p * x + q) * np.log(gamma + s)
+                + (p * x - 1.0) * np.log(s / x)
+                - (p * x + q) * np.log(gamma + s / x)
             )
         return -float(term.sum())
 
@@ -107,8 +107,9 @@ def probabilistic_clv(
         x = pos["frequency"].to_numpy(dtype=float)
         s = pos["total_spend"].to_numpy(dtype=float)
         p, q, gamma = _gamma_gamma_mle(x, s)
-        # E[future tx value] = p*(gamma+s)/(q+p*x-1)  (Gamma-Gamma posterior mean)
-        emv = p * (gamma + s) / (q + p * x - 1.0)
+        # E[M | x, m̄] = (γq + p·s) / (px + q − 1)  (Gamma-Gamma posterior mean,
+        # cf. lifetimes.GammaGammaFitter.conditional_expected_average_profit)
+        emv = (gamma * q + p * s) / (p * x + q - 1.0)
         # Expected future purchases over horizon, from the segment retention curve.
         curve = cohorts.loc[cohorts["segment"] == seg].iloc[0]
         r = curve[[c for c in cohorts.columns if c.startswith("month_")]].to_numpy(float)

@@ -159,7 +159,6 @@ def plot_sensitivity(sens: pd.DataFrame, out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     fig, ax = plt.subplots(figsize=(9, 6))
     for scenario, label in [("fx_cost", "FX cost %"), ("fx_spread", "FX spread %")]:
         sub = sens[sens["scenario"] == scenario]
@@ -182,7 +181,6 @@ def plot_fx_break_even(out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     amount = 100.0
     revenue_items = {
         "FX spread": FX_SPREAD * amount,

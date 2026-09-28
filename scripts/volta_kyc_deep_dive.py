@@ -52,6 +52,8 @@ def two_proportion_ztest(n1: int, x1: int, n2: int, x2: int) -> dict[str, float]
     p1, p2 = x1 / n1, x2 / n2
     p = (x1 + x2) / (n1 + n2)
     se = math.sqrt(p * (1 - p) * (1 / n1 + 1 / n2))
+    if se == 0:
+        return {"p1": float(p1), "p2": float(p2), "z": 0.0, "p": 1.0}
     z = (p1 - p2) / se
     p_value = 2 * (1 - norm.cdf(abs(z)))
     return {"p1": float(p1), "p2": float(p2), "z": float(z), "p": float(p_value)}
@@ -124,7 +126,6 @@ def plot_hte_by_age(df: pd.DataFrame, out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     hte = hte_by_age(df)
     x = range(len(AGE_ORDER))
     width = 0.38

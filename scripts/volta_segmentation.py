@@ -162,8 +162,6 @@ def plot_silhouette(
     import matplotlib.pyplot as plt
     from matplotlib.cm import tab10
 
-    plt.style.use("dark_background")
-
     # Stratified subsample so small clusters stay represented.
     rng = np.random.default_rng(seed)
     if len(labels) > max_samples:
@@ -290,7 +288,6 @@ def plot_segmentation(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     paths: list[Path] = []
 
     # 1. PCA scatter colored by segment.
@@ -338,7 +335,6 @@ def plot_segment_pareto(seg_summary: pd.DataFrame, out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     order = seg_summary.sort_values("total_monthly_rev", ascending=False)
     segments = order.index.tolist()
     rev_share = (order["total_monthly_rev"] / order["total_monthly_rev"].sum() * 100).values

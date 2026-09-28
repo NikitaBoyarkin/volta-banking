@@ -109,7 +109,6 @@ def plot_cohort_heatmap(df: pd.DataFrame, out: Path) -> Path:
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    plt.style.use("dark_background")
     months = [c for c in df.columns if c.startswith("month_")]
     matrix = df[months].to_numpy()
     labels = [c.replace("month_", "M") for c in months]
@@ -144,7 +143,6 @@ def plot_retention_curves(out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     months = np.arange(12)
     labels = [f"M{i}" for i in months]
 
@@ -567,6 +565,9 @@ def section_cohort_heatmap(df: pd.DataFrame) -> Path:
     print(f"\nSaved: {out.name}")
     print("  Rows = monthly cohorts, columns = M0..M11, colour = % active.")
     print("  Red dashed line marks the Sep 2024 KYC-fix boundary (post-fix below).")
+    print("  Note: synthetic data gives every cohort a complete M0..M11 history;")
+    print("  a real snapshot yields a TRIANGULAR matrix (recent cohorts have fewer")
+    print("  observed months) — partial cohorts must be masked, not read as churn.")
     return out
 
 
@@ -653,9 +654,9 @@ def section_summary(ltvs: dict[str, float], test: dict[str, float]) -> None:
         ),
         (
             3,
-            "Referral users: best M1, M3, M6 retention",
-            "Referral = highest LTV channel",
-            "Scale referral program (Project 4 priority)",
+            "Channel-level retention is NOT measurable in this dataset",
+            "Cohort matrix is plan-agnostic; channel cuts live in Projects 1/4",
+            "Add channel cohort tracking to compare referral vs organic",
         ),
         (
             4,

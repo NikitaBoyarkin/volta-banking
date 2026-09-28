@@ -58,6 +58,36 @@ def test_gamma_gamma_mle_positive() -> None:
     assert p > 0 and q > 0 and gamma > 0
 
 
+def test_gamma_gamma_mle_recovers_known_params() -> None:
+    """Recovery check: data drawn from a true Gamma-Gamma hierarchy
+    (nu ~ Gamma(q, gamma); m_bar | nu ~ Gamma(px, nu)) must yield MLE
+    close to the generating (p, q, gamma)."""
+    rng = np.random.default_rng(7)
+    n = 4000
+    p_true, q_true, gamma_true = 2.0, 4.0, 1.0
+    x = np.clip(rng.poisson(4, size=n).astype(float), 1.0, None)
+    rate = rng.gamma(shape=q_true, scale=1.0 / gamma_true, size=n)
+    m_bar = rng.gamma(shape=p_true * x, scale=1.0 / rate)
+    s = m_bar * x  # total spend; m_bar = s / x is the GG quantity
+    p, q, gamma = _gamma_gamma_mle(x, s)
+    assert p == pytest.approx(p_true, rel=0.35)
+    assert q == pytest.approx(q_true, rel=0.35)
+    assert gamma == pytest.approx(gamma_true, rel=0.35)
+
+
+def test_expected_value_formula_matches_mixing_form() -> None:
+    """Compact E[M] = (gamma*q + p*s)/(px + q - 1) must equal the mixing
+    form w*m_bar + (1 - w)*gamma*q/(q - 1), w = px/(px + q - 1)
+    (cf. lifetimes.GammaGammaFitter.conditional_expected_average_profit)."""
+    p, q, gamma = 2.0, 4.0, 1.0
+    x = np.array([1.0, 3.0, 5.0])
+    s = np.array([60.0, 150.0, 250.0])
+    w = p * x / (p * x + q - 1.0)
+    mixing = (1 - w) * gamma * q / (q - 1.0) + w * (s / x)
+    compact = (gamma * q + p * s) / (p * x + q - 1.0)
+    assert np.allclose(mixing, compact)
+
+
 def test_probabilistic_clv_ordering() -> None:
     customers = load_customers()
     cohorts = load_cohorts()

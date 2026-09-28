@@ -26,6 +26,7 @@ data:
 	$(PY) scripts/generate_feature_events_data.py
 	$(PY) scripts/generate_campaigns_data.py
 	$(PY) scripts/generate_referrals_data.py
+	$(PY) scripts/generate_referral_segments_data.py
 	$(PY) scripts/generate_jtbd_data.py
 	$(PY) scripts/generate_unit_economics_data.py
 	$(PY) scripts/generate_premium_upsell_data.py

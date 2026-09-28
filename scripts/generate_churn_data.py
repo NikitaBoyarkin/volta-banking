@@ -59,6 +59,11 @@ def generate_users(n: int = N_USERS) -> pd.DataFrame:
 
     churned = rng.binomial(1, np.clip(p, 0.01, 0.99)).astype(int)
 
+    # Observation-window month when the user signed up (1..24). Drawn AFTER the
+    # label so every pre-existing column keeps its exact committed values; the
+    # out-of-time section in volta_churn_prediction.py splits train/test on it.
+    signup_month = rng.integers(1, 25, size=n).astype(int)
+
     return pd.DataFrame(
         {
             "customer_id": np.arange(n),
@@ -70,6 +75,7 @@ def generate_users(n: int = N_USERS) -> pd.DataFrame:
             "age": age.astype(int),
             "is_premium": premium.astype(int),
             "customer_tenure_months": tenure.astype(int),
+            "signup_month": signup_month,
             "channel": channel,
             "churned": churned,
         }
@@ -84,6 +90,9 @@ def main() -> None:
     print(f"Generated {len(df)} users -> {DATA_DIR / 'volta_churn_data.csv'}")
     print(f"  Shape: {df.shape}")
     print(f"  Class balance: churned={churn_rate:.1%}, retained={1 - churn_rate:.1%}")
+    print(
+        f"  Observation window: signup_month {df['signup_month'].min()}..{df['signup_month'].max()}"
+    )
     print("\nFeature preview:")
     print(df.head().to_string(index=False))
 

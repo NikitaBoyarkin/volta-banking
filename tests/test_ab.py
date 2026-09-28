@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import volta_ab_testing as ab
 
@@ -209,6 +210,12 @@ def test_sequential_bounds_rejects_large_z() -> None:
     assert verdict["reject"] is True
     verdict_neg = ab.sequential_verdict(1.0, bounds)
     assert verdict_neg["reject"] is False
+
+
+def test_sequential_bounds_total_alpha_spent() -> None:
+    bounds = ab.sequential_bounds(n_looks=4, method="obrien_fleming")
+    # Design claim: 4-look OBF (c=2.024) spends ≈ 0.05 in total across looks.
+    assert bounds["cum_alpha_spent"].iloc[-1] == pytest.approx(0.05, abs=0.01)
 
 
 def test_power_at_mde_increases_with_mde_and_n() -> None:

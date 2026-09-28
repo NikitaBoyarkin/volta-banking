@@ -7,6 +7,13 @@ Compares four attribution models across channels on converted customer journeys:
   - Data-driven   : Shapley value, using a set-value function
     v(S) = revenue * min(1, sum of channel influence weights in S)
 
+    LIMITATION — READ BEFORE CITING: the influence weights in v(S) are the
+    same ground-truth weights that generated the synthetic journeys
+    (imported from generate_attribution_data), so the Shapley ranking
+    reproduces the data-generating process by construction. This script is
+    a methodological demonstration of the Shapley computation, not an
+    empirical finding about Volta's channels.
+
 Run:  uv run python volta_attribution.py
 """
 
@@ -155,6 +162,9 @@ def section_insight(comp: pd.DataFrame) -> None:
     print(f"  Last-touch top channel: {top_naive}")
     if top_shapley != top_naive:
         print("  → Single-touch models mis-allocate budget; use Shapley to rebalance.")
+    print("\n  ⚠️  LIMITATION: channel weights in v(S) are the generator's ground")
+    print("  truth, so the Shapley ranking is by construction — a methods")
+    print("  demonstration, not an empirical finding.")
 
 
 def main() -> None:

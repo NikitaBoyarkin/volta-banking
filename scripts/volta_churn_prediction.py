@@ -4,7 +4,9 @@ Builds and compares churn-prediction models on synthetic fintech user data:
 a Logistic Regression baseline vs a Random Forest. Demonstrates the full ML
 workflow — data prep, class balance, train/test split, model comparison by
 ROC-AUC, and feature-importance interpretation — then ties the drivers back
-to the segmentation narrative from Project 4.
+to the segmentation narrative from Project 4. Finally, an out-of-time (OOT)
+validation re-fits the Random Forest on an early sign-up cohort and scores a
+later one, showing why the random-split AUC is an optimistic estimate.
 
 Run:  uv run python volta_churn_prediction.py
 """
@@ -39,6 +41,8 @@ from utils.common import (
 SEED = 42
 TARGET = "churned"
 CAT_FEATURES = ["channel"]
+TIME_FEATURE = "signup_month"
+OOT_TEST_FRACTION = 0.30
 
 
 def load_data() -> pd.DataFrame:
@@ -165,6 +169,89 @@ def section_feature_importance(imp_df: pd.DataFrame) -> Path:
     out = plot_importance(imp_df, OUTPUT_DIR / "churn_feature_importance.png")
     print(f"  Saved: {out.name}")
     return out
+
+
+# ── Out-of-time (OOT) validation ─────────────────────────────────────────────
+def out_of_time_split(
+    df: pd.DataFrame, test_fraction: float = OOT_TEST_FRACTION
+) -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Split users by sign-up month: early cohort trains, latest ~30% is held out.
+
+    Unlike a random split, no train user shares the observation window with a
+    test user, so this is the honest estimate of how the model scores users
+    it could not have seen at training time.
+    """
+    cutoff = int(np.quantile(df[TIME_FEATURE], 1 - test_fraction))
+    train = df[df[TIME_FEATURE] < cutoff].reset_index(drop=True)
+    test = df[df[TIME_FEATURE] >= cutoff].reset_index(drop=True)
+    if train.empty or test.empty:
+        raise ValueError(
+            f"Degenerate time split at cutoff month {cutoff}: train={len(train)}, test={len(test)}"
+        )
+    return train, test, cutoff
+
+
+def section_out_of_time(df: pd.DataFrame, random_split_auc: float) -> dict[str, Any]:
+    """Re-fit the RF on an early sign-up cohort and score a later one (OOT).
+
+    The random-split AUC mixes users observed over the same window into train
+    and test, which is optimistic — `days_since_last_activity` is measured in
+    that shared window and is already close to the churn definition itself.
+    The OOT number below is the one to quote.
+    """
+    print_subsection("Out-of-Time Validation (train on early cohort, test on late)")
+    train_df, test_df, cutoff = out_of_time_split(df)
+    months = df[TIME_FEATURE].to_numpy()
+
+    # Preprocess once, then split by the same time mask -> identical features.
+    X, y, _ = prep_features(df)
+    train_mask = months < cutoff
+    X_train, y_train = X[train_mask], y[train_mask]
+    X_test, y_test = X[~train_mask], y[~train_mask]
+
+    rf = RandomForestClassifier(n_estimators=200, random_state=SEED, n_jobs=-1)
+    rf.fit(X_train, y_train)
+    oot_auc = float(roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1]))
+
+    train_months = train_df[TIME_FEATURE].agg(["min", "max"])
+    test_months = test_df[TIME_FEATURE].agg(["min", "max"])
+    result: dict[str, Any] = {
+        "random_split_auc": float(random_split_auc),
+        "oot_auc": oot_auc,
+        "cutoff_month": cutoff,
+        "train_months": (int(train_months["min"]), int(train_months["max"])),
+        "test_months": (int(test_months["min"]), int(test_months["max"])),
+        "n_train": len(train_df),
+        "n_test": len(test_df),
+        "train_churn_rate": float(train_df[TARGET].mean()),
+        "test_churn_rate": float(test_df[TARGET].mean()),
+    }
+
+    print(
+        f"  Train: months {result['train_months'][0]}–{result['train_months'][1]} "
+        f"({result['n_train']:,} users, churn {result['train_churn_rate']:.1%})"
+    )
+    print(
+        f"  Test:  months {result['test_months'][0]}–{result['test_months'][1]} "
+        f"({result['n_test']:,} users, churn {result['test_churn_rate']:.1%})"
+    )
+    gap = result["oot_auc"] - result["random_split_auc"]
+    print(f"  Random-split AUC: {result['random_split_auc']:.3f}")
+    print(f"  OOT AUC:          {result['oot_auc']:.3f}  (gap {gap:+.3f})")
+    if gap < 0:
+        print("  → OOT AUC below random-split — expected: a random split is optimistic")
+    else:
+        print("  → OOT gap within noise here (the synthetic process is stationary),")
+        print("    but under real cohort drift this is where the drop shows up first.")
+    print("  Caveats, honestly stated:")
+    print("    * days_since_last_activity is nearly tautological with the churn")
+    print("      label (churn IS sustained inactivity), so both AUCs are inflated;")
+    print("      the honest production fix is to score it as of a data cut-off")
+    print("      before the churn outcome is knowable.")
+    print("    * The time split is the number to quote in interviews: it tests")
+    print("      whether relationships hold for users observed later, not just")
+    print("      random re-samples of the same window.")
+    return result
 
 
 # ── SHAP explainability (REQ-202, Portfolio 2.0) ─────────────────────────────
@@ -295,6 +382,8 @@ def main() -> None:
     section_roc(models, X_test, y_test)
     imp_df = feature_importance(models["Random Forest"], feature_names)
     section_feature_importance(imp_df)
+
+    section_out_of_time(df, random_split_auc=float(metrics.loc["Random Forest", "ROC-AUC"]))
 
     rng = np.random.default_rng(SEED)
     sample_idx = rng.choice(len(X_test), size=min(SHAP_SAMPLE, len(X_test)), replace=False)

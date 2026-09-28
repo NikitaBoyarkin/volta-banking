@@ -24,8 +24,8 @@ def setup(
 ) -> None:
     """Initialise display + warnings for an analysis script.
 
-    Warnings are scoped to Future/UserWarning only (not blanket-suppressed) so
-    real pandas/sklearn issues are not hidden during development.
+    Only FutureWarning is suppressed (noise from pandas API churn);
+    UserWarning (incl. sklearn ConvergenceWarning) stays visible.
 
     When ``style`` is None the shared light theme from :mod:`utils.viz_helpers`
     is applied (README-friendly). Pass an explicit matplotlib style name to
@@ -34,7 +34,6 @@ def setup(
     import matplotlib.pyplot as plt
 
     warnings.filterwarnings("ignore", category=FutureWarning)
-    warnings.filterwarnings("ignore", category=UserWarning)
     if style is None:
         from utils.viz_helpers import apply_style
 

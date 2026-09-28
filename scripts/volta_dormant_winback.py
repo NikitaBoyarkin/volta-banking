@@ -209,15 +209,24 @@ def plot_reactivation(df: pd.DataFrame, out: Path) -> Path:
         title="Dormant 45+ Win-Back — Reactivation by Arm × Dormancy",
         description="Automated vs light-touch vs human-assisted reactivation at 60 days.",
     )
+    human_3060 = bucket_lift(df, "human", "30-60d")
+    human_180 = bucket_lift(df, "human", "180d+")
+    light_share = (
+        arm_lift(df, "light_touch")["lift_pp"] / arm_lift(df, "human")["lift_pp"] * 100
+        if arm_lift(df, "human")["lift_pp"]
+        else float("nan")
+    )
     return save_chart_report(
         fig,
         out,
         title="Dormant 45+ Win-Back — Reactivation by Arm × Dormancy",
         description_ru="Реактивация (60 дней) по arm × глубине дормантности: автоматический vs light-touch vs human.",
         findings=[
-            "Assisted-реактивация работает: human даёт +11.4 п.п. на 30–60 днях против control.",
-            "Эффект падает с глубиной дормантности: на 180d+ почти исчезает.",
-            "Light-touch даёт ~60% эффекта human за долю цены.",
+            f"Assisted-реактивация: human даёт {human_3060['lift_pp']:+.1f} п.п. "
+            f"(p={human_3060['p']:.2e}) на 30–60 днях против control.",
+            f"Эффект падает с глубиной дормантности: на 180d+ "
+            f"{human_180['lift_pp']:+.1f} п.п. против {human_3060['lift_pp']:+.1f} п.п. на 30–60d.",
+            f"Light-touch даёт {light_share:.0f}% эффекта human (overall) за долю цены.",
             "Дормантность 45+ — реально UX-барьер: у человека+упрощённого флоу возврат растёт.",
         ],
         script="scripts/volta_dormant_winback.py",
@@ -248,15 +257,39 @@ def plot_roi(df: pd.DataFrame, out: Path) -> Path:
         title="Dormant 45+ Win-Back — ROI by Arm × Dormancy",
         description="Recovered LTV over incremental intervention cost; ROI=1 is break-even.",
     )
+    light_targets = targeting_rule(df, "light_touch")
+    human_max = max(human)
+    if human_max < TARGET_ROI:
+        human_text = (
+            f"Human-звонок не окупается ни на одной глубине (max ROI {human_max:.2f} < "
+            f"{TARGET_ROI:.0f}) — €{COST_PER_ARM['human']:.0f} на юзера слишком дорого."
+        )
+    else:
+        human_text = f"Human-звонок окупается на части глубин (max ROI {human_max:.2f})."
+    if light_targets:
+        light_hits = [
+            f"{b} (ROI {roi:.2f})"
+            for b, roi in zip(DORMANCY_BUCKETS, light, strict=True)
+            if b in light_targets
+        ]
+        light_text = (
+            f"Light-touch окупается на: {', '.join(light_hits)}; на остальных глубинах — нет."
+        )
+        track_text = (
+            f"Целевой трек: light-touch только на {', '.join(light_targets)}; глубже — не тратить."
+        )
+    else:
+        light_text = f"Light-touch не окупается ни на одной глубине (max ROI {max(light):.2f})."
+        track_text = "Целевой трек: light-touch нигде не окупается — не тратить."
     return save_chart_report(
         fig,
         out,
         title="Dormant 45+ Win-Back — ROI by Arm × Dormancy",
         description_ru="ROI (восстановленный LTV / прирост затрат) по arm × глубине дормантности; ROI=1 — окупаемость.",
         findings=[
-            "Human-звонок не окупается ни на одной глубине (ROI < 1) — €11 на юзера слишком дорого.",
-            "Light-touch окупается на 30–60d (ROI 2,5) и 60–90d (ROI 1,3), дальше — нет.",
-            "Целевой трек: light-touch только на 30–90 дней; глубже — не тратить.",
+            human_text,
+            light_text,
+            track_text,
             "Human — только как эскалация для high-value/high-balance юзеров.",
         ],
         script="scripts/volta_dormant_winback.py",

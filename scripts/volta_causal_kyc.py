@@ -263,7 +263,6 @@ def plot_trends(df: pd.DataFrame, out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     grouped = df.groupby(["cohort", "treated"])["retained_m3"].mean().unstack()
     months = list(grouped.index)
     x = np.arange(len(months))

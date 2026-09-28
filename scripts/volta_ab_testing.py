@@ -33,7 +33,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 from scipy import stats
-from scipy.stats import norm
+from scipy.stats import multivariate_normal, norm
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
 from utils.viz_helpers import add_chart_context, save_chart_report
@@ -435,6 +435,26 @@ def _bh_adjusted_pvals(pvals: list[float]) -> list[float]:
 
 
 # ── A3 Sequential testing (alpha spending) ──────────────────────────────────
+def _cumulative_alpha_spent(z_bounds: np.ndarray) -> np.ndarray:
+    """Cumulative alpha spent under H0 across correlated interim looks.
+
+    Interim z-statistics follow the canonical group-sequential joint
+    distribution (Brownian motion sampled at equal information fractions):
+    corr(Z_i, Z_j) = sqrt(t_i / t_j) with t_i = i / n. Alpha spent through
+    look k = 1 - P(|Z_i| <= b_i for all i <= k), computed via the
+    multivariate normal CDF. Independent-look arithmetic (1 - prod(1 - a_i))
+    would inflate the total and misstate the design.
+    """
+    n = len(z_bounds)
+    t = np.arange(1, n + 1) / n
+    cov = np.sqrt(np.minimum.outer(t, t) / np.maximum.outer(t, t))
+    spent = []
+    for k in range(1, n + 1):
+        mvn = multivariate_normal(mean=np.zeros(k), cov=cov[:k, :k])
+        spent.append(1.0 - float(mvn.cdf(z_bounds[:k], lower_limit=-z_bounds[:k])))
+    return np.array(spent)
+
+
 def sequential_bounds(
     n_looks: int, alpha: float = 0.05, method: str = "obrien_fleming"
 ) -> pd.DataFrame:
@@ -463,7 +483,7 @@ def sequential_bounds(
         z_bounds = np.full(n_looks, c)
 
     nominal_alpha = 2 * norm.sf(np.abs(z_bounds))
-    cum_alpha = np.array([1 - (1 - nominal_alpha[i]) ** (i + 1) for i in range(n_looks)])
+    cum_alpha = _cumulative_alpha_spent(z_bounds)
     return pd.DataFrame(
         {
             "look": np.arange(1, n_looks + 1),
@@ -512,7 +532,6 @@ def plot_power_curve(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     if mde_range is None:
         mde_range = np.linspace(0.01, 0.15, 50)
     powers = [power_at_mde(p_baseline, mde, n_per_arm, alpha) for mde in mde_range]
@@ -540,12 +559,11 @@ def plot_power_curve(
     return out
 
 
-def plot_ab_conversion(r: dict[str, float], out: Path) -> Path:
+def plot_ab_conversion(r: dict[str, float], srm: dict[str, float | str], out: Path) -> Path:
     """Control vs treatment KYC completion with 95% CI and MDE threshold."""
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.style.use("dark_background")
     control_rate = r["control_rate"] * 100
     treatment_rate = r["treatment_rate"] * 100
     labels = ["Control", "Treatment"]
@@ -582,6 +600,26 @@ def plot_ab_conversion(r: dict[str, float], out: Path) -> Path:
         )
 
     sig_text = "значим" if r["p_value"] < 0.05 else "не значим"
+    # Ship gate, mirroring section_recommendation: significance + MDE + no SRM.
+    mde_abs = CONSTANTS["MDE_ABSOLUTE"]
+    gate_sig = r["p_value"] < 0.05
+    gate_lift = r["absolute_lift"] >= mde_abs
+    gate_srm = srm["p"] >= 0.01
+    if gate_sig and gate_lift and gate_srm:
+        gate_text = (
+            f"Гейт выката пройден: p={r['p_value']:.4f} (<0.05), "
+            f"лифт {r['absolute_lift']:+.2%} ≥ +{mde_abs:.0%} MDE, "
+            f"SRM p={srm['p']:.4f} (≥0.01) → раскатка на 100%."
+        )
+    else:
+        failed = []
+        if not gate_sig:
+            failed.append(f"p={r['p_value']:.4f} ≥ 0.05")
+        if not gate_lift:
+            failed.append(f"лифт {r['absolute_lift']:+.2%} < +{mde_abs:.0%} MDE")
+        if not gate_srm:
+            failed.append(f"SRM p={srm['p']:.4f} < 0.01")
+        gate_text = f"Гейт выката НЕ пройден: {'; '.join(failed)} → раскатки нет."
     add_chart_context(
         fig,
         title="KYC Progress Bar A/B Test — Conversion Comparison",
@@ -600,7 +638,7 @@ def plot_ab_conversion(r: dict[str, float], out: Path) -> Path:
             f"(лифт {r['absolute_lift']:+.2%}).",
             f"95%-й ДИ лифта: [{r['ci_lower']:+.2%}, {r['ci_upper']:+.2%}].",
             f"Результат статистически {sig_text} (Z={r['z_score']:.2f}, p={r['p_value']:.4f}).",
-            "Гейт выката пройден: p<0.05, лифт ≥ +5 п.п. MDE, SRM нет → раскатка на 100%.",
+            gate_text,
         ],
         script="scripts/volta_ab_testing.py",
         source="data/volta_ab_experiment.csv",
@@ -756,17 +794,23 @@ def section_checklist(
         "Statistical significance (p < 0.05)": r["p_value"] < 0.05,
         f"Minimum lift achieved (≥ +{mde:.0%})": r["absolute_lift"] >= mde,
         "No SRM detected": srm["p"] >= 0.01,
-        "Covariate balance": True,  # checked in SRM section
+        # Covariate balance (device/age_group/channel) is only shown as descriptive
+        # crosstabs in the SRM section — no formal statistical test is computed.
+        "Covariate balance": "not tested",
         "Positive ROI": impact["roi_multiple"] > 1,
     }
     for criterion, passed in checklist.items():
-        if passed:
+        if passed is True:
             status = "✅ PASS"
-        elif criterion.startswith("Minimum lift"):
-            status = "⚠️  BORDERLINE"
+        elif passed is False:
+            status = "⚠️  BORDERLINE" if criterion.startswith("Minimum lift") else "❌ FAIL"
         else:
-            status = "❌ FAIL"
+            status = f"ℹ️  {passed}"
         print(f"{criterion:<45} {status}")
+    print(
+        "\nCovariate balance: 'not tested' — только описательные crosstab-таблицы "
+        "(device/age_group/channel) в разделе SRM; формального теста (SMD) скрипт не считает."
+    )
 
 
 def section_recommendation(
@@ -1065,11 +1109,11 @@ def section_power_curve(r: dict[str, float]) -> Path:
     return out
 
 
-def section_ab_conversion(r: dict[str, float]) -> Path:
+def section_ab_conversion(r: dict[str, float], srm: dict[str, float | str]) -> Path:
     """A5: control vs treatment conversion bar chart PNG."""
     print_section("CONVERSION COMPARISON CHART", width=60)
     out = OUTPUT_DIR / "ab_conversion_comparison.png"
-    plot_ab_conversion(r, out)
+    plot_ab_conversion(r, srm, out)
     print(f"\nSaved: {out.name}")
     print("  Bar chart with 95% CI and MDE threshold; red/green decision context.")
     return out
@@ -1089,7 +1133,7 @@ def main() -> None:
     section_hte(df)
     section_sequential(df, r)
     section_power_curve(r)
-    section_ab_conversion(r)
+    section_ab_conversion(r, srm)
     section_segments(seg_df)
     impact = section_business(r)
     section_checklist(r, srm, impact)

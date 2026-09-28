@@ -6,17 +6,21 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
 
 from volta_churn_prediction import (
     evaluate,
     feature_importance,
     fit_models,
     load_data,
+    out_of_time_split,
     plot_importance,
     plot_roc,
     plot_shap_local,
     plot_shap_summary,
     prep_features,
+    section_out_of_time,
     shap_positive_class,
 )
 
@@ -122,3 +126,38 @@ def test_plot_shap_local_writes_png(tmp_path) -> None:
     values, base, _ = shap_positive_class(rf, X[:50])
     out = plot_shap_local(values, X[:50], base, names, 0, tmp_path / "local.png")
     assert out.exists() and out.stat().st_size > 1000
+
+
+def test_out_of_time_split_is_temporal_and_disjoint() -> None:
+    """Train and test share no observation window and no users."""
+    df = load_data()
+    train, test, cutoff = out_of_time_split(df)
+    assert train["signup_month"].max() < cutoff
+    assert test["signup_month"].min() >= cutoff
+    # no user overlap between periods
+    assert len(set(train["customer_id"]) & set(test["customer_id"])) == 0
+    assert len(train) > 0 and len(test) > 0
+    # test holds roughly the last ~30% of the window
+    assert 0.2 <= len(test) / len(df) <= 0.4
+
+
+def test_section_out_of_time_returns_honest_auc() -> None:
+    """OOT section returns a dict with a valid AUC computed on a later period."""
+    df = load_data()
+    # reproduce the random-split RF AUC exactly as main() does
+    X, y, _ = prep_features(df)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=SEED, stratify=y
+    )
+    rf = RandomForestClassifier(n_estimators=200, random_state=SEED, n_jobs=-1)
+    rf.fit(X_train, y_train)
+    random_auc = float(roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1]))
+
+    result = section_out_of_time(df, random_split_auc=random_auc)
+    assert isinstance(result, dict)
+    assert 0.0 <= result["oot_auc"] <= 1.0
+    assert 0.0 <= result["random_split_auc"] <= 1.0
+    # train period strictly precedes the test period
+    assert result["train_months"][1] < result["test_months"][0]
+    assert result["n_train"] + result["n_test"] == len(df)
+    assert result["n_train"] > 0 and result["n_test"] > 0

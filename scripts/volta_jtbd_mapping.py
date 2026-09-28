@@ -86,6 +86,8 @@ def two_proportion_ztest(n1: int, x1: int, n2: int, x2: int) -> dict[str, float]
     p1, p2 = x1 / n1, x2 / n2
     p_pool = (x1 + x2) / (n1 + n2)
     se = np.sqrt(p_pool * (1 - p_pool) * (1 / n1 + 1 / n2))
+    if se == 0:
+        return {"z": 0.0, "p": 1.0, "p1": float(p1), "p2": float(p2)}
     z = (p1 - p2) / se
     p = 2 * (1 - stats.norm.cdf(abs(z)))
     return {"z": float(z), "p": float(p), "p1": float(p1), "p2": float(p2)}
@@ -122,7 +124,6 @@ def plot_heatmap(row_pct: pd.DataFrame, out: Path) -> Path:
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    plt.style.use("dark_background")
     display = row_pct.rename(index=SEGMENT_NAMES)
     fig, ax = plt.subplots(figsize=(9, 6))
     sns.heatmap(
