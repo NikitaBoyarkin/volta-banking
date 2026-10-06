@@ -1,17 +1,37 @@
 # Volta Neobank — core product-analytics board.
 #
-# Mirrors the six curated hub charts (docs/prd-volta-structure.md) as
-# declarative queries over the CSVs in data/, with the same definitions the
-# static board in docs/board/volta_board.html uses (scripts/build_board.py):
-# step-over-step funnel conversion, KYC A/B lift, pre/post cohort retention,
-# segment size vs revenue, and the cumulative revenue pareto.
+# Core-product layer, mirroring docs/board/volta_board.html (scripts/build_board.py):
+# onboarding funnel, KYC A/B test (SRM + guardrails + segment breakdowns), cohort
+# retention (pre vs post fix), the difference-in-differences causal layer, and
+# segmentation (indexed profile, size vs revenue, cumulative pareto).
+# Source: data/*.csv via the `volta` registry in dbt_charts.yml.
 
 title: "Volta Neobank — core analytics"
 notes: >
-  Onboarding funnel, KYC A/B test, cohort retention (pre vs post fix),
-  segmentation size/revenue and revenue pareto. Source: data/*.csv
-tags: [volta, neobank, funnel, retention, segmentation]
+  Onboarding funnel, KYC A/B test (with SRM balance, churn/revenue guardrails and
+  device/channel/age breakdowns), cohort retention (pre vs post fix), the causal
+  difference-in-differences layer, and segmentation (indexed segment profile,
+  size vs revenue, revenue pareto). Source: data/*.csv. The device / age /
+  channel filters apply to the A/B and Causal tabs; the retention and
+  segmentation tables carry no such dimensions.
+tags: [volta, neobank, funnel, ab-test, retention, causal, segmentation]
 source: volta
+
+variables:
+  device:
+    input: multiselect
+    options: { static: [android, ios, web] }
+    default: [android, ios, web]
+  age_group:
+    input: multiselect
+    options: { static: ["18-24", "25-34", "35-44", "45+"] }
+    default: ["18-24", "25-34", "35-44", "45+"]
+  channel:
+    input: multiselect
+    label: "Acquisition channel"
+    notes: "A/B tab only — the experiment table is the only one carrying it."
+    options: { static: [app_store, google_play, referral, website] }
+    default: [app_store, google_play, referral, website]
 
 queries:
   # ── Onboarding funnel ──────────────────────────────────────────────
@@ -38,15 +58,18 @@ queries:
       FROM funnel
 
   # ── KYC progress-bar A/B test ──────────────────────────────────────
+  # Primary metric: KYC completion by arm.
   kyc_ab_arms:
     sql: |
       SELECT arm, conv, ord
       FROM (
         SELECT 'Control'   AS arm, AVG(kyc_completed) AS conv, 1 AS ord
         FROM ab WHERE "group" = 'control'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
         UNION ALL
         SELECT 'Treatment', AVG(kyc_completed), 2
         FROM ab WHERE "group" = 'treatment'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
       ) t
       ORDER BY ord
 
@@ -55,6 +78,103 @@ queries:
       SELECT (AVG(CASE WHEN "group" = 'treatment' THEN kyc_completed END)
             - AVG(CASE WHEN "group" = 'control'   THEN kyc_completed END)) * 100 AS lift_pp
       FROM ab
+      WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+
+  # Sample-ratio mismatch: arm sizes under the current filter.
+  ab_srm:
+    sql: |
+      SELECT arm, users, ord
+      FROM (
+        SELECT 'Control' AS arm, COUNT(*) AS users, 1 AS ord
+        FROM ab WHERE "group" = 'control'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        UNION ALL
+        SELECT 'Treatment', COUNT(*), 2
+        FROM ab WHERE "group" = 'treatment'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+      ) t
+      ORDER BY ord
+
+  ab_srm_pct:
+    sql: |
+      WITH c AS (
+        SELECT "group", COUNT(*) AS n
+        FROM ab
+        WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        GROUP BY 1
+      )
+      SELECT ABS(
+               MAX(CASE WHEN "group" = 'control'   THEN n END)
+             - MAX(CASE WHEN "group" = 'treatment' THEN n END)
+             )::DOUBLE / NULLIF(SUM(n), 0) AS imbalance
+      FROM c
+
+  # Guardrail 1 — 30-day churn by arm.
+  ab_churn_arms:
+    sql: |
+      SELECT arm, churn, ord
+      FROM (
+        SELECT 'Control' AS arm, AVG(churned_30d) AS churn, 1 AS ord
+        FROM ab WHERE "group" = 'control'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        UNION ALL
+        SELECT 'Treatment', AVG(churned_30d), 2
+        FROM ab WHERE "group" = 'treatment'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+      ) t
+      ORDER BY ord
+
+  ab_churn_delta:
+    sql: |
+      SELECT (AVG(CASE WHEN "group" = 'treatment' THEN churned_30d END)
+            - AVG(CASE WHEN "group" = 'control'   THEN churned_30d END)) * 100 AS churn_pp
+      FROM ab
+      WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+
+  # Guardrail 2 — revenue per user, relative lift.
+  ab_revenue_delta:
+    sql: |
+      WITH m AS (
+        SELECT AVG(CASE WHEN "group" = 'treatment' THEN revenue_30d_eur END) AS t,
+               AVG(CASE WHEN "group" = 'control'   THEN revenue_30d_eur END) AS c
+        FROM ab
+        WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+      )
+      SELECT (t - c) / NULLIF(c, 0) AS rev_delta
+      FROM m
+
+  # Where the lift lives — completion by arm across channel and age.
+  ab_by_channel:
+    sql: |
+      SELECT channel, arm, conv, ord
+      FROM (
+        SELECT channel, 'Control' AS arm, AVG(kyc_completed) AS conv, 1 AS ord
+        FROM ab WHERE "group" = 'control'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        GROUP BY channel
+        UNION ALL
+        SELECT channel, 'Treatment', AVG(kyc_completed), 2
+        FROM ab WHERE "group" = 'treatment'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        GROUP BY channel
+      ) t
+      ORDER BY channel, ord
+
+  ab_by_age:
+    sql: |
+      SELECT age_group, arm, conv, ord
+      FROM (
+        SELECT age_group, 'Control' AS arm, AVG(kyc_completed) AS conv, 1 AS ord
+        FROM ab WHERE "group" = 'control'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        GROUP BY age_group
+        UNION ALL
+        SELECT age_group, 'Treatment', AVG(kyc_completed), 2
+        FROM ab WHERE "group" = 'treatment'
+          AND {{ filter('device', device) }} AND {{ filter('age_group', age_group) }} AND {{ filter('channel', channel) }}
+        GROUP BY age_group
+      ) t
+      ORDER BY age_group, ord
 
   # ── Cohort retention ───────────────────────────────────────────────
   retention_heat:
@@ -101,6 +221,40 @@ queries:
             - AVG(CASE WHEN cohort <  '2024-09' THEN retention END)) * 100 AS lift_pp
       FROM u
 
+  # ── Causal layer — difference-in-differences ───────────────────────
+  # Four cells: treated (in-app KYC) vs comparison (partner KYC) × pre/post.
+  causal_cells:
+    sql: |
+      WITH m AS (
+        SELECT treated, post, AVG(retained_m3) AS r
+        FROM causal
+        WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }}
+        GROUP BY 1, 2
+      )
+      SELECT label, r AS retention, ord
+      FROM (
+        SELECT 'in-app · pre'   AS label, r, 1 AS ord FROM m WHERE treated = 1 AND post = 0
+        UNION ALL SELECT 'in-app · post',   r, 2 FROM m WHERE treated = 1 AND post = 1
+        UNION ALL SELECT 'partner · pre',   r, 3 FROM m WHERE treated = 0 AND post = 0
+        UNION ALL SELECT 'partner · post',  r, 4 FROM m WHERE treated = 0 AND post = 1
+      ) t
+      ORDER BY ord
+
+  # ATT = (treated change) − (comparison change) over the KYC rollout.
+  causal_att:
+    sql: |
+      WITH m AS (
+        SELECT treated, post, AVG(retained_m3) AS r
+        FROM causal
+        WHERE {{ filter('device', device) }} AND {{ filter('age_group', age_group) }}
+        GROUP BY 1, 2
+      )
+      SELECT (
+          (MAX(r) FILTER (WHERE treated = 1 AND post = 1) - MAX(r) FILTER (WHERE treated = 1 AND post = 0))
+        - (MAX(r) FILTER (WHERE treated = 0 AND post = 1) - MAX(r) FILTER (WHERE treated = 0 AND post = 0))
+      ) * 100 AS att_pp
+      FROM m
+
   # ── Segmentation ───────────────────────────────────────────────────
   segment_size_revenue:
     sql: |
@@ -122,14 +276,50 @@ queries:
       FROM s
       ORDER BY total_monthly_rev DESC
 
+  # Segment profile indexed to the cross-segment average (= 100), so measures
+  # in different units (transactions, savings, tenure, %) share one colour scale.
+  segment_profile_index:
+    sql: |
+      WITH a AS (
+        SELECT AVG(avg_tx) AS tx, AVG(avg_logins) AS lg, AVG(avg_savings) AS sv,
+               AVG(avg_tenure) AS tn, AVG(pct_premium) AS pm, AVG(avg_rev) AS rv
+        FROM segment_profiles
+      )
+      SELECT p.segment, '1 Transactions' AS metric, p.avg_tx      / a.tx * 100 AS index_value FROM segment_profiles p, a
+      UNION ALL SELECT p.segment, '2 Logins',   p.avg_logins  / a.lg * 100 FROM segment_profiles p, a
+      UNION ALL SELECT p.segment, '3 Savings',  p.avg_savings / a.sv * 100 FROM segment_profiles p, a
+      UNION ALL SELECT p.segment, '4 Tenure',   p.avg_tenure  / a.tn * 100 FROM segment_profiles p, a
+      UNION ALL SELECT p.segment, '5 Premium %', p.pct_premium / a.pm * 100 FROM segment_profiles p, a
+      UNION ALL SELECT p.segment, '6 Revenue',  p.avg_rev     / a.rv * 100 FROM segment_profiles p, a
+      ORDER BY 1, 2
+
+  segment_table:
+    sql: |
+      SELECT segment, n_users, avg_rev, pct_premium, avg_tx, avg_savings,
+             avg_logins, avg_tenure, revenue_share
+      FROM segment_profiles
+      ORDER BY total_monthly_rev DESC
+
 charts:
+  # ── KPIs ───────────────────────────────────────────────────────────
+  kpi_activation:
+    type: kpi
+    query: activation_rate
+    label: "Install → first transaction"
+    value: activation
+    support:
+      label: "end-to-end activation"
+    style:
+      value:
+        format: percent
+
   kpi_kyc_lift:
     type: kpi
     query: kyc_lift
-    label: "KYC activation lift"
+    label: "KYC completion lift"
     value: lift_pp
     support:
-      label: "treatment vs control, 30k users"
+      label: "treatment vs control"
     style:
       value:
         format: percentage_points_delta
@@ -149,17 +339,53 @@ charts:
       glyph:
         character: "▲"
 
-  kpi_activation:
+  kpi_srm:
     type: kpi
-    query: activation_rate
-    label: "Install → first transaction"
-    value: activation
+    query: ab_srm_pct
+    label: "SRM imbalance"
+    value: imbalance
     support:
-      label: "end-to-end activation"
+      label: "|control − treatment| / total"
     style:
       value:
         format: percent
 
+  kpi_churn_delta:
+    type: kpi
+    query: ab_churn_delta
+    label: "30-day churn delta"
+    value: churn_pp
+    support:
+      label: "treatment − control · guardrail"
+    style:
+      value:
+        format: percentage_points_delta
+
+  kpi_rev_delta:
+    type: kpi
+    query: ab_revenue_delta
+    label: "Revenue / user delta"
+    value: rev_delta
+    support:
+      label: "treatment vs control · guardrail"
+    style:
+      value:
+        format: percent
+
+  kpi_causal_att:
+    type: kpi
+    query: causal_att
+    label: "Causal ATT (DiD)"
+    value: att_pp
+    support:
+      label: "in-app vs partner · M3 retention"
+    style:
+      value:
+        format: percentage_points_delta
+      glyph:
+        character: "▲"
+
+  # ── Onboarding ─────────────────────────────────────────────────────
   onboarding_funnel:
     type: bar
     query: funnel_steps
@@ -175,6 +401,7 @@ charts:
       orientation: horizontal
       number_format: percent
 
+  # ── KYC A/B test ───────────────────────────────────────────────────
   kyc_ab_chart:
     type: bar
     query: kyc_ab_arms
@@ -189,6 +416,63 @@ charts:
       orientation: vertical
       number_format: percent
 
+  ab_srm_chart:
+    type: bar
+    query: ab_srm
+    title: "Sample-ratio check"
+    subtitle: "Arm sizes under the current filters — should be near 50/50"
+    x: arm
+    y: users
+    x_label: "Arm"
+    y_label: "Users"
+    sort: { by: ord, order: asc }
+    style:
+      orientation: vertical
+      number_format: integer
+
+  ab_churn_chart:
+    type: bar
+    query: ab_churn_arms
+    title: "Guardrail: 30-day churn"
+    subtitle: "Churn must not rise with the treatment"
+    x: arm
+    y: churn
+    x_label: "Arm"
+    y_label: "30-day churn"
+    sort: { by: ord, order: asc }
+    style:
+      orientation: vertical
+      number_format: percent
+
+  ab_channel_breakdown:
+    type: bar
+    query: ab_by_channel
+    title: "Lift by acquisition channel"
+    subtitle: "KYC completion, control vs treatment"
+    x: channel
+    y: conv
+    color: arm
+    x_label: "Channel"
+    y_label: "KYC completion"
+    style:
+      orientation: vertical
+      number_format: percent
+
+  ab_age_breakdown:
+    type: bar
+    query: ab_by_age
+    title: "Lift by age group"
+    subtitle: "KYC completion, control vs treatment"
+    x: age_group
+    y: conv
+    color: arm
+    x_label: "Age group"
+    y_label: "KYC completion"
+    style:
+      orientation: vertical
+      number_format: percent
+
+  # ── Retention ──────────────────────────────────────────────────────
   retention_heat:
     type: heatmap
     query: retention_heat
@@ -212,6 +496,25 @@ charts:
     style:
       number_format: percent
 
+  # ── Causal (DiD) ───────────────────────────────────────────────────
+  causal_chart:
+    type: bar
+    query: causal_cells
+    title: "Difference-in-differences"
+    subtitle: "M3 retention: in-app KYC (treated) vs partner KYC (comparison), before and after the rollout"
+    notes: >
+      The treated flow rises at the cutoff while the comparison flow does not —
+      the gap between the two changes is the causal ATT, not a shared time trend.
+    x: label
+    y: retention
+    x_label: "Group · period"
+    y_label: "M3 retention"
+    sort: { by: ord, order: asc }
+    style:
+      orientation: vertical
+      number_format: percent
+
+  # ── Segmentation ───────────────────────────────────────────────────
   segment_size_vs_revenue:
     type: scatter
     query: segment_size_revenue
@@ -250,9 +553,46 @@ charts:
           labels:
             format: percent
 
-rows:
-  - cols: [kpi_kyc_lift, kpi_m3_lift, kpi_activation]
-  - onboarding_funnel
-  - cols: [kyc_ab_chart, retention_heat]
-  - retention_curve
-  - cols: [segment_size_vs_revenue, segment_pareto]
+  segment_profile_heat:
+    type: heatmap
+    query: segment_profile_index
+    title: "Segment profile, indexed"
+    subtitle: "Each measure as an index of the cross-segment average (= 100)"
+    x: metric
+    y: segment
+    color: index_value
+    height: 260
+
+  segment_table:
+    type: table
+    query: segment_table
+    title: "Segment profile — raw metrics"
+    subtitle: "All measures behind the indexed heatmap above"
+
+tabs:
+  items:
+    - title: "Onboarding"
+      rows:
+        - cols: [kpi_activation]
+        - onboarding_funnel
+    - title: "KYC A/B test"
+      rows:
+        - cols: [kpi_kyc_lift, kpi_srm]
+        - cols: [kpi_churn_delta, kpi_rev_delta]
+        - kyc_ab_chart
+        - cols: [ab_srm_chart, ab_churn_chart]
+        - cols: [ab_channel_breakdown, ab_age_breakdown]
+    - title: "Retention"
+      rows:
+        - cols: [kpi_m3_lift]
+        - retention_curve
+        - retention_heat
+    - title: "Causal (DiD)"
+      rows:
+        - cols: [kpi_causal_att]
+        - causal_chart
+    - title: "Segmentation"
+      rows:
+        - cols: [segment_size_vs_revenue, segment_pareto]
+        - segment_profile_heat
+        - segment_table

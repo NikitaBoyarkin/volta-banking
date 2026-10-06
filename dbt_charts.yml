@@ -48,5 +48,6 @@ sources:
     files:
       funnel: data/charts/funnel.csv
       ab: data/volta_ab_experiment.csv
+      causal: data/volta_causal_kyc.csv
       retention_matrix: data/cohort_retention_matrix.csv
       segment_profiles: data/segment_profiles.csv
