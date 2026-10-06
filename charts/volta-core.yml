@@ -1,0 +1,258 @@
+# Volta Neobank — core product-analytics board.
+#
+# Mirrors the six curated hub charts (docs/prd-volta-structure.md) as
+# declarative queries over the CSVs in data/, with the same definitions the
+# static board in docs/board/volta_board.html uses (scripts/build_board.py):
+# step-over-step funnel conversion, KYC A/B lift, pre/post cohort retention,
+# segment size vs revenue, and the cumulative revenue pareto.
+
+title: "Volta Neobank — core analytics"
+notes: >
+  Onboarding funnel, KYC A/B test, cohort retention (pre vs post fix),
+  segmentation size/revenue and revenue pareto. Source: data/*.csv
+tags: [volta, neobank, funnel, retention, segmentation]
+source: volta
+
+queries:
+  # ── Onboarding funnel ──────────────────────────────────────────────
+  funnel_steps:
+    sql: |
+      WITH s AS (
+        SELECT SUM(app_install) AS a, SUM(registration) AS b, SUM(kyc_start) AS c,
+               SUM(kyc_complete) AS d, SUM(card_ordered) AS e, SUM(first_tx) AS f
+        FROM funnel
+      )
+      SELECT step, reached, conversion, ord
+      FROM (
+        SELECT 'registration' AS step, b AS reached, b::DOUBLE / a AS conversion, 2 AS ord FROM s
+        UNION ALL SELECT 'kyc_start',    c, c::DOUBLE / b, 3 FROM s
+        UNION ALL SELECT 'kyc_complete', d, d::DOUBLE / c, 4 FROM s
+        UNION ALL SELECT 'card_ordered', e, e::DOUBLE / d, 5 FROM s
+        UNION ALL SELECT 'first_tx',     f, f::DOUBLE / e, 6 FROM s
+      ) t
+      ORDER BY ord
+
+  activation_rate:
+    sql: |
+      SELECT SUM(first_tx)::DOUBLE / SUM(app_install) AS activation
+      FROM funnel
+
+  # ── KYC progress-bar A/B test ──────────────────────────────────────
+  kyc_ab_arms:
+    sql: |
+      SELECT arm, conv, ord
+      FROM (
+        SELECT 'Control'   AS arm, AVG(kyc_completed) AS conv, 1 AS ord
+        FROM ab WHERE "group" = 'control'
+        UNION ALL
+        SELECT 'Treatment', AVG(kyc_completed), 2
+        FROM ab WHERE "group" = 'treatment'
+      ) t
+      ORDER BY ord
+
+  kyc_lift:
+    sql: |
+      SELECT (AVG(CASE WHEN "group" = 'treatment' THEN kyc_completed END)
+            - AVG(CASE WHEN "group" = 'control'   THEN kyc_completed END)) * 100 AS lift_pp
+      FROM ab
+
+  # ── Cohort retention ───────────────────────────────────────────────
+  retention_heat:
+    sql: |
+      SELECT cohort,
+             'M' || lpad(replace(month_key, 'month_', ''), 2, '0') AS month,
+             retention
+      FROM (
+        UNPIVOT retention_matrix
+        ON month_1, month_2, month_3, month_4, month_5, month_6,
+           month_7, month_8, month_9, month_10, month_11
+        INTO NAME month_key VALUE retention
+      )
+      ORDER BY cohort, CAST(replace(month_key, 'month_', '') AS INTEGER)
+
+  retention_curve:
+    sql: |
+      WITH u AS (
+        SELECT cohort,
+               CAST(replace(month_key, 'month_', '') AS INTEGER) AS month,
+               retention
+        FROM (
+          UNPIVOT retention_matrix
+          ON month_0, month_1, month_2, month_3, month_4, month_5, month_6,
+             month_7, month_8, month_9, month_10, month_11
+          INTO NAME month_key VALUE retention
+        )
+      )
+      SELECT 'M' || lpad(CAST(month AS VARCHAR), 2, '0') AS month,
+             CASE WHEN cohort < '2024-09' THEN 'Pre-fix cohorts'
+                  ELSE 'Post-fix cohorts' END AS period,
+             AVG(retention) AS retention
+      FROM u
+      GROUP BY 1, 2
+      ORDER BY month
+
+  m3_lift:
+    sql: |
+      WITH u AS (
+        SELECT cohort, retention
+        FROM (UNPIVOT retention_matrix ON month_3 INTO NAME mk VALUE retention)
+      )
+      SELECT (AVG(CASE WHEN cohort >= '2024-09' THEN retention END)
+            - AVG(CASE WHEN cohort <  '2024-09' THEN retention END)) * 100 AS lift_pp
+      FROM u
+
+  # ── Segmentation ───────────────────────────────────────────────────
+  segment_size_revenue:
+    sql: |
+      SELECT segment, n_users, total_monthly_rev, revenue_share
+      FROM segment_profiles
+      ORDER BY total_monthly_rev DESC
+
+  segment_pareto:
+    sql: |
+      WITH s AS (
+        SELECT segment, total_monthly_rev,
+               SUM(total_monthly_rev) OVER (
+                 ORDER BY total_monthly_rev DESC
+                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+               ) / SUM(total_monthly_rev) OVER () AS cum_share
+        FROM segment_profiles
+      )
+      SELECT segment, total_monthly_rev, cum_share
+      FROM s
+      ORDER BY total_monthly_rev DESC
+
+charts:
+  kpi_kyc_lift:
+    type: kpi
+    query: kyc_lift
+    label: "KYC activation lift"
+    value: lift_pp
+    support:
+      label: "treatment vs control, 30k users"
+    style:
+      value:
+        format: percentage_points_delta
+      glyph:
+        character: "▲"
+
+  kpi_m3_lift:
+    type: kpi
+    query: m3_lift
+    label: "M3 retention lift"
+    value: lift_pp
+    support:
+      label: "post-fix vs pre-fix cohorts"
+    style:
+      value:
+        format: percentage_points_delta
+      glyph:
+        character: "▲"
+
+  kpi_activation:
+    type: kpi
+    query: activation_rate
+    label: "Install → first transaction"
+    value: activation
+    support:
+      label: "end-to-end activation"
+    style:
+      value:
+        format: percent
+
+  onboarding_funnel:
+    type: bar
+    query: funnel_steps
+    title: "Onboarding funnel"
+    subtitle: "Step-over-step conversion"
+    notes: "KYC completion is the critical step — the largest relative drop."
+    x: step
+    y: conversion
+    x_label: "Step"
+    y_label: "Conversion from previous step"
+    sort: { by: ord, order: asc }
+    style:
+      orientation: horizontal
+      number_format: percent
+
+  kyc_ab_chart:
+    type: bar
+    query: kyc_ab_arms
+    title: "KYC progress-bar A/B test"
+    subtitle: "Does a progress bar in the KYC flow lift completion?"
+    x: arm
+    y: conv
+    x_label: "Arm"
+    y_label: "KYC completion"
+    sort: { by: ord, order: asc }
+    style:
+      orientation: vertical
+      number_format: percent
+
+  retention_heat:
+    type: heatmap
+    query: retention_heat
+    title: "Cohort retention"
+    subtitle: "Monthly retention by signup cohort"
+    x: month
+    y: cohort
+    color: retention
+    height: 480
+
+  retention_curve:
+    type: line
+    query: retention_curve
+    title: "Retention before vs after the KYC fix"
+    subtitle: "Mean cohort curve, pre-fix cohorts vs post-fix cohorts"
+    x: month
+    y: retention
+    color: period
+    x_label: "Months since signup"
+    y_label: "Retention"
+    style:
+      number_format: percent
+
+  segment_size_vs_revenue:
+    type: scatter
+    query: segment_size_revenue
+    title: "Segment size vs monthly revenue"
+    subtitle: "One point per customer segment"
+    x: n_users
+    y: total_monthly_rev
+    color: segment
+    x_label: "Users"
+    y_label: "Monthly revenue"
+    style:
+      number_format: currency_whole
+
+  segment_pareto:
+    type: bar
+    query: segment_pareto
+    title: "Revenue pareto"
+    subtitle: "Monthly revenue and cumulative share by segment"
+    x: segment
+    y: total_monthly_rev
+    x_label: "Segment"
+    y_label: "Monthly revenue"
+    style:
+      orientation: vertical
+      number_format: currency_whole
+    # cum_share is deliberately a 0–1 ratio on the secondary percent axis below;
+    # the heuristic compares it against the base chart's currency axis.
+    warnings_ignore: [WARN-LIKELY-CURRENCY-OR-PERCENT-MISSING-FORMATTER]
+    layers:
+      - type: line
+        y: cum_share
+        label: "Cumulative share"
+        axis_y:
+          position: right
+          title: "Cumulative share"
+          labels:
+            format: percent
+
+rows:
+  - cols: [kpi_kyc_lift, kpi_m3_lift, kpi_activation]
+  - onboarding_funnel
+  - cols: [kyc_ab_chart, retention_heat]
+  - retention_curve
+  - cols: [segment_size_vs_revenue, segment_pareto]
