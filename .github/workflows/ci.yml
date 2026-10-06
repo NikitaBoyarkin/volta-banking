@@ -32,3 +32,11 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+      # Structural gate on the dbt-charts board (charts/volta-core.yml): schema
+      # and cross-refs only, no warehouse. --strict fails on warnings, so a
+      # stale or malformed board cannot outlive the data it describes. The
+      # board's rendered HTML is published to the portfolio site; regenerate it
+      # from here and copy public/demos/volta-board/index.html over there.
+      - name: Validate dbt-charts board
+        run: uvx --from dbt-charts dct validate charts/volta-core.yml --strict
