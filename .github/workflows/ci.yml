@@ -34,9 +34,21 @@ jobs:
         run: uv run pytest
 
       # Structural gate on the dbt-charts board (charts/volta-core.yml): schema
-      # and cross-refs only, no warehouse. --strict fails on warnings, so a
-      # stale or malformed board cannot outlive the data it describes. The
-      # board's rendered HTML is published to the portfolio site; regenerate it
-      # from here and copy public/demos/volta-board/index.html over there.
+      # and cross-refs only, no warehouse — it never opens the board's file
+      # sources. The render below is what proves the board can actually be
+      # built. The portfolio site re-renders it from this repo at deploy time.
       - name: Validate dbt-charts board
         run: uvx --from dbt-charts dct validate charts/volta-core.yml --strict
+
+      # data/charts/funnel.csv is derived (scripts/build_charts_data.py) and
+      # gitignored, so a fresh checkout carries no board data at all and
+      # `dct validate` passes regardless. Only a real render notices a missing
+      # or malformed source — otherwise first seen in the site's deploy job.
+      - name: Materialise board CSV
+        run: uv run python scripts/build_charts_data.py
+
+      - name: Render dbt-charts board
+        run: |
+          uvx --from dbt-charts dct render charts/volta-core.yml \
+            --format html \
+            --output "$RUNNER_TEMP/volta-core.html"
