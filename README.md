@@ -17,6 +17,8 @@
 - 🏦 [Флагман: Volta neobank](https://github.com/NikitaBoyarkin/volta-banking)
 - 🧪 Связанные: [A/B Testing Toolkit](https://github.com/NikitaBoyarkin/ab_test) · [Causal / Uplift](https://github.com/NikitaBoyarkin/causal-uplift) · [SQL Analytics Case Study](https://github.com/NikitaBoyarkin/sql-analytics-case-study) · [Churn Prediction](https://github.com/NikitaBoyarkin/churn-prediction)
 
+**▶ [Диаграмма: Volta Neobank — end-to-end analytics topology](docs/diagrams/volta-banking.html)** — открывается в браузере, без установки и сборки
+
 **На этой странице:** [Ситуация](#ситуация) · [Задача](#задача) · [Действия](#действия) · [Результат](#результат) · [Главное](#главное) · [Решения и гейты](#решения-и-гейты) · [Быстрый старт](#быстрый-старт) · [Стек и структура](#стек-и-структура) · [Визуализации](#визуализации--остальные-проекты) · [Где читать дальше](#где-читать-дальше)
 
 ## Ситуация
