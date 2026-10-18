@@ -31,7 +31,7 @@ import pandas as pd
 from scipy import stats
 
 from utils.common import CONSTANTS, OUTPUT_DIR, data_path, print_section, print_subsection, setup
-from utils.viz_helpers import add_chart_context, save_chart_report
+from utils.viz_helpers import EDGE_COLOR, PALETTE, add_chart_context, save_chart_report
 
 FIX_CUTOFF = "2024-09"  # cohorts >= this date are "post-fix"
 
@@ -108,34 +108,107 @@ def plot_cohort_heatmap(df: pd.DataFrame, out: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import seaborn as sns
+    from matplotlib.colors import LinearSegmentedColormap, Normalize
 
     months = [c for c in df.columns if c.startswith("month_")]
-    matrix = df[months].to_numpy()
+    matrix = df[months].to_numpy() * 100
     labels = [c.replace("month_", "M") for c in months]
+
+    # Carry each cohort's own size on its row label. A 5,707-user cohort and a
+    # 4,147-user one do not support the same claim, and the cells alone cannot
+    # show that — two rows at 30% are not equally solid evidence.
+    sizes = df["cohort_size"].astype(int) if "cohort_size" in df.columns else None
+    row_labels = [
+        f"{cohort}  (n={int(sizes.loc[cohort]):,})" if sizes is not None else str(cohort)
+        for cohort in df.index
+    ]
+
+    # Sequential ramp anchored on the project's primary blue, not seaborn's
+    # default YlGnBu, so this chart matches every other Volta figure.
+    cmap = LinearSegmentedColormap.from_list("volta_blue", ["#F1F5F9", PALETTE[0]])
 
     fig, ax = plt.subplots(figsize=(11, 6))
     sns.heatmap(
-        matrix * 100,
+        matrix,
         annot=True,
         fmt=".0f",
-        cmap="YlGnBu",
+        cmap=cmap,
         xticklabels=labels,
-        yticklabels=df.index,
+        yticklabels=row_labels,
         ax=ax,
-        cbar_kws={"label": "Retention %"},
+        cbar_kws={"label": "Retention %", "shrink": 0.85},
         annot_kws={"fontsize": 7},
         linewidths=0.4,
-        linecolor="#222",
+        linecolor=EDGE_COLOR,
     )
-    # Mark the post-fix boundary.
+
+    # Contrast follows the cell's actual luminance, not a fixed threshold:
+    # the ramp midpoint is where white text starts to lose to dark.
+    norm = Normalize(vmin=np.nanmin(matrix), vmax=np.nanmax(matrix))
+    for text in ax.texts:
+        try:
+            value = float(text.get_text())
+        except ValueError:
+            continue
+        if np.isnan(value):
+            continue
+        r, g, b, _ = cmap(norm(value))
+        luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        text.set_color("#FFFFFF" if luminance < 0.5 else "#111827")
+
+    # Mark the post-fix boundary and label it, so the reader does not need the
+    # caption to know which side is which.
     post_start = next((i for i, c in enumerate(df.index) if c >= FIX_CUTOFF), None)
     if post_start is not None and post_start > 0:
-        ax.axhline(post_start, color="#FF5630", linewidth=2, linestyle="--")
-    ax.set_title("Cohort retention matrix (% active per month)")
-    fig.tight_layout()
-    fig.savefig(out, dpi=130, bbox_inches="tight")
-    plt.close(fig)
-    return out
+        ax.axhline(post_start, color=PALETTE[3], linewidth=2, linestyle="--")
+        ax.text(
+            len(months) - 0.5,
+            post_start - 0.12,
+            "post-fix",
+            color=PALETTE[3],
+            fontsize=8,
+            fontweight="bold",
+            ha="right",
+            va="bottom",
+            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.75, "pad": 1},
+        )
+
+    pre = [c for c in df.index if c < FIX_CUTOFF]
+    post = [c for c in df.index if c >= FIX_CUTOFF]
+    m6 = df["month_6"] * 100
+    pre_m6 = m6[m6.index.isin(pre)].mean()
+    post_m6 = m6[m6.index.isin(post)].mean()
+
+    findings = [
+        f"После KYC-фикса M6-удержание выросло с {pre_m6:.0f}% до {post_m6:.0f}% "
+        f"(+{post_m6 - pre_m6:.0f} п.п.).",
+        f"Разброс по когортам заметный: лучшая {m6.idxmax()} — {m6.max():.0f}%, "
+        f"худшая {m6.idxmin()} — {m6.min():.0f}% на M6.",
+        "M0 = 100% по построению: строка не показывает отток, читать нужно M1 и дальше.",
+    ]
+    if sizes is not None:
+        findings.append(
+            f"Размер когорт {int(sizes.min()):,}–{int(sizes.max()):,} сопоставим, "
+            "поэтому строки сравнимы без взвешивания."
+        )
+
+    add_chart_context(
+        fig,
+        title="Cohort Retention Matrix",
+        description="Share of each monthly signup cohort still active in months 0–11; the dashed line marks the Sep 2024 KYC fix.",
+    )
+    return save_chart_report(
+        fig,
+        out,
+        title="Cohort Retention Matrix",
+        description_ru=(
+            "Доля активных пользователей по месячным когортам (M0–M11); "
+            "пунктир — граница KYC-фикса (сен 2024)."
+        ),
+        findings=findings,
+        script="scripts/volta_retention_analysis.py",
+        source="data/cohort_retention_matrix.csv",
+    )
 
 
 def plot_retention_curves(out: Path) -> Path:
