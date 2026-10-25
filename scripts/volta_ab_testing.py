@@ -1037,6 +1037,16 @@ def section_cuped(df: pd.DataFrame) -> None:
     print("   theta computed on control group only (standard CUPED); computing it")
     print("   on the full sample would contaminate the estimate with the treatment effect.")
 
+    # CUPED can only remove what pre-treatment features actually explain. A saturated
+    # model on the observed covariates (in-sample, so an optimistic bound) gives that
+    # ceiling; if the observed reduction is far below it, the covariate is simply weak.
+    seg_cols = [c for c in ("age_group", "device", "channel") if c in df.columns]
+    if seg_cols:
+        ceiling = df.groupby(seg_cols)["kyc_completed"].transform("mean").var() / y.var()
+        print(f"Ceiling from {', '.join(seg_cols)}: {ceiling * 100:.1f}%  (Var(p_hat) / Var(y))")
+        print("   A binary outcome is dominated by Bernoulli noise, so no honest covariate")
+        print("   buys much here: read this section as a method demonstration, not a win.")
+
 
 def section_bucketing(df: pd.DataFrame) -> None:
     print_section("BUCKETING UTILITY (for heavy-tailed ratio metrics)", width=60)

@@ -11,8 +11,11 @@ Experiment parameters (match the analysis script docstring):
   - Split: 50/50 user-level
   - Heterogeneous effects: age 35-44 and android benefit most; 45+ and app_store weak
 
-The `pre_kyc_rate` column is a pre-experiment engagement covariate correlated with
-the outcome, so CUPED (Section 9.3) can activate when this data is loaded.
+The `pre_kyc_rate` column is a pre-experiment engagement covariate. It correlates
+with the outcome only weakly: the base has no user-level propensity heterogeneity,
+so CUPED can trim ~0.1% of the variance, against a ~1% ceiling from the segment
+features (see `volta_ab_testing.section_cuped`). Treat CUPED there as a method
+demonstration, not an efficiency gain.
 """
 
 from __future__ import annotations
