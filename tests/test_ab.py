@@ -233,3 +233,65 @@ def test_plot_power_curve_writes_png(tmp_path) -> None:
     assert path == out
     assert out.exists()
     assert out.stat().st_size > 1000
+
+
+# ── Revenue units & ship gating regressions ──────────────────────────────────
+def test_business_impact_does_not_multiply_lifetime_ltv_by_monthly_flow() -> None:
+    """LTV is a lifetime value: monthly revenue must be a monthly ARPU flow and
+    the 12-month figure a cohort triangle, never lifetime × 12."""
+    impact = ab.business_impact(0.0572)
+    ltv = ab.CONSTANTS["LTV_PER_USER_EUR"]
+    arpu = impact["blended_monthly_arpu"]
+    activated = impact["additional_activated"]
+
+    # Monthly revenue is a monthly rate, not the cohort's lifetime value.
+    assert impact["monthly_revenue"] == pytest.approx(activated * arpu, rel=1e-9)
+    assert impact["cohort_lifetime_revenue"] == pytest.approx(activated * ltv, rel=1e-9)
+    assert impact["lifetime_months"] == pytest.approx(ltv / arpu, rel=1e-9)
+    assert "annual_revenue" not in impact
+
+    # 12 cohorts, each amortised over the months it is alive inside year 1.
+    cohort_months = sum(min(12 - k, impact["lifetime_months"]) for k in range(12))
+    assert impact["cumulative_12m_revenue"] == pytest.approx(
+        impact["monthly_revenue"] * cohort_months, rel=1e-9
+    )
+    # With a >12-month lifetime the triangle factor is 78, not 12×12.
+    assert cohort_months == pytest.approx(78.0, abs=1e-9)
+    assert impact["cumulative_12m_revenue"] < 12 * 12 * impact["monthly_revenue"]
+
+    # Derived metrics stay internally consistent.
+    assert impact["payback_months"] == pytest.approx(
+        impact["dev_cost"] / impact["monthly_revenue"], rel=1e-9
+    )
+    assert impact["roi_multiple_12m"] == pytest.approx(
+        impact["cumulative_12m_revenue"] / impact["dev_cost"], rel=1e-9
+    )
+
+
+def test_guardrail_verdict_treats_missing_metrics_as_not_ok() -> None:
+    empty = ab.guardrail_verdict([])
+    assert empty["measured"] is False
+    assert empty["ok"] is False
+
+    violated = ab.guardrail_verdict([{"metric": "churned_30d", "violated": True}])
+    assert violated["measured"] is True
+    assert violated["ok"] is False
+    assert violated["violated"] == ["churned_30d"]
+
+    clean = ab.guardrail_verdict([{"metric": "churned_30d", "violated": False}])
+    assert clean["ok"] is True
+    assert clean["violated"] == []
+
+
+def test_guardrail_violation_blocks_ship_decision(capsys) -> None:
+    r = {"p_value": 0.0001, "absolute_lift": 0.0572, "z_score": 5.8}
+    srm = {"p": 1.0}
+    seg_df = pd.DataFrame({"significant": [False], "p_value": [0.5]})
+    impact = ab.business_impact(0.0572)
+    guardrails = ab.guardrail_verdict([{"metric": "churned_30d", "violated": True}])
+
+    ab.section_recommendation(r, srm, seg_df, impact, guardrails)
+    out = capsys.readouterr().out
+    assert "DO NOT SHIP — GUARDRAIL CHECK FAILED" in out
+    assert "SHIP THE FEATURE" not in out
+    assert "churned_30d" in out

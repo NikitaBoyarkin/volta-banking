@@ -28,6 +28,7 @@ Data: produced by `generate_ab_data.py` → volta_ab_experiment.csv, segment_res
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, TypedDict
 
 import matplotlib
 import numpy as np
@@ -42,6 +43,16 @@ N_BOOT = 2000
 BOOT_SEED = 42
 AA_SEED = 42
 AA_ITERATIONS = 2000
+
+
+class GuardrailReport(TypedDict):
+    """Verdict for the guardrail block — the single source of truth used by
+    both the guardrail section and the final ship decision."""
+
+    results: list[dict[str, Any]]
+    measured: bool
+    ok: bool
+    violated: list[str]
 
 
 # ── Sample size ───────────────────────────────────────────────────────────────
@@ -648,8 +659,34 @@ def plot_ab_conversion(r: dict[str, float], srm: dict[str, float | str], out: Pa
 # ── Business impact ───────────────────────────────────────────────────────────
 def business_impact(absolute_lift: float) -> dict[str, float]:
     """Project the revenue impact of the observed lift using Project-1 funnel
-    rates. Source of each rate is documented inline."""
+    rates. Source of each rate is documented inline.
+
+    Units. ``absolute_lift`` is a lift in KYC completion (percentage points)
+    applied to a MONTHLY acquisition flow. ``LTV_PER_USER_EUR`` is a LIFETIME
+    value, so it is never multiplied by a monthly flow: that would count the
+    same lifetime once per month. Instead the LTV is converted into a monthly
+    revenue rate — the blended monthly ARPU — and the LTV is recovered as the
+    integral of that rate over the implied customer lifetime
+    (``LTV / ARPU`` months).
+
+    Reported figures:
+      * ``monthly_revenue`` — revenue of the newly acquired monthly cohort in
+        its FIRST month (a run-rate, not a lifetime total).
+      * ``cohort_lifetime_revenue`` — lifetime revenue of one such cohort
+        (``activated × LTV``), shown only for context.
+      * ``cumulative_12m_revenue`` — revenue accrued over the first 12 months
+        by the 12 monthly cohorts acquired during the year (a cohort triangle:
+        the month-0 cohort contributes 12 months, the month-11 cohort one),
+        each cohort capped at its expected lifetime.
+    """
     ltv = CONSTANTS["LTV_PER_USER_EUR"]
+    arpu_free = CONSTANTS["MONTHLY_ARPU_FREE_EUR"]
+    arpu_premium = CONSTANTS["MONTHLY_ARPU_PREMIUM_EUR"]
+    premium_share = CONSTANTS["PREMIUM_PLAN_SHARE"]
+    blended_monthly_arpu = arpu_free * (1 - premium_share) + arpu_premium * premium_share
+    # Lifetime implied by the LTV itself: LTV = ARPU × lifetime_months.
+    lifetime_months = ltv / blended_monthly_arpu
+
     monthly_app_installs = 50_000
     kyc_start_conversion = 0.492  # 49.2% of installs reach KYC (Project 1)
     card_order_rate = 0.718  # KYC-complete → card ordered (Project 1)
@@ -658,16 +695,54 @@ def business_impact(absolute_lift: float) -> dict[str, float]:
     monthly_kyc_starters = monthly_app_installs * kyc_start_conversion
     additional_kyc_completions = monthly_kyc_starters * absolute_lift
     additional_activated = additional_kyc_completions * card_order_rate * first_transaction_rate
-    additional_monthly_revenue = additional_activated * ltv
+    monthly_revenue = additional_activated * blended_monthly_arpu
+
+    # Months of revenue each of the 12 monthly cohorts accrues inside year 1,
+    # capped at the implied lifetime (a cohort stops paying after that).
+    cohort_months = sum(min(12 - k, lifetime_months) for k in range(12))
+    cumulative_12m_revenue = monthly_revenue * cohort_months
+
+    dev_cost = 15_000.0
     return {
         "monthly_kyc_starters": monthly_kyc_starters,
         "additional_kyc_completions": additional_kyc_completions,
         "additional_activated": additional_activated,
-        "monthly_revenue": additional_monthly_revenue,
-        "annual_revenue": additional_monthly_revenue * 12,
-        "dev_cost": 15_000,
-        "roi_multiple": (additional_monthly_revenue * 12) / 15_000,
+        "blended_monthly_arpu": blended_monthly_arpu,
+        "lifetime_months": lifetime_months,
+        "monthly_revenue": monthly_revenue,
+        "cohort_lifetime_revenue": additional_activated * ltv,
+        "cumulative_12m_revenue": cumulative_12m_revenue,
+        "dev_cost": dev_cost,
+        "payback_months": dev_cost / monthly_revenue,
+        "roi_multiple_12m": cumulative_12m_revenue / dev_cost,
     }
+
+
+def guardrail_verdict(results: list[dict[str, Any]]) -> GuardrailReport:
+    """Single source of truth for the guardrail verdict.
+
+    Both ``section_guardrails`` and ``section_recommendation`` read this, so the
+    printed verdicts cannot disagree. Guardrails count as passed only when they
+    were actually measured (a missing metric is not a green light) and none
+    moved significantly in the bad direction.
+    """
+    measured = bool(results)
+    violated = [str(g["metric"]) for g in results if g["violated"]]
+    return {
+        "results": results,
+        "measured": measured,
+        "ok": measured and not violated,
+        "violated": violated,
+    }
+
+
+def guardrail_status_text(guardrails: GuardrailReport) -> str:
+    """Human-readable guardrail status shared by every section that reports it."""
+    if not guardrails["measured"]:
+        return "⚠️ guardrails not measured in this dataset"
+    if guardrails["violated"]:
+        return f"❌ guardrail violated: {', '.join(guardrails['violated'])}"
+    return "✅ no guardrail violated (30-day churn, 30-day revenue)"
 
 
 # ── Section printers ──────────────────────────────────────────────────────────
@@ -778,15 +853,28 @@ def section_business(r: dict[str, float]) -> dict[str, float]:
     print(f"  → Lift: {r['absolute_lift']:.2%}")
     print(f"Additional activated users*:       {int(impact['additional_activated']):>10,}")
     print("  *After card order + first transaction")
-    print(f"\nAdditional monthly revenue:        €{impact['monthly_revenue']:>10,.0f}")
-    print(f"Additional annual revenue:         €{impact['annual_revenue']:>10,.0f}")
+    print("\nRevenue units: LTV is a lifetime figure — applied as a monthly ARPU")
+    print(
+        f"rate of €{impact['blended_monthly_arpu']:.2f} over an implied "
+        f"{impact['lifetime_months']:.1f}-month lifetime."
+    )
+    print(f"\nFirst-month revenue per cohort:    €{impact['monthly_revenue']:>10,.0f}")
+    print(f"Lifetime revenue of one cohort:    €{impact['cohort_lifetime_revenue']:>10,.0f}")
+    print(
+        f"Cumulative revenue, 12 cohorts:    €{impact['cumulative_12m_revenue']:>10,.0f}"
+        "  (year 1, amortised)"
+    )
     print(f"\nDevelopment cost estimate:         €{impact['dev_cost']:>10,.0f}")
-    print(f"ROI multiple (12-month):           {impact['roi_multiple']:>10.0f}x")
+    print(f"Payback on monthly revenue:        {impact['payback_months']:>10.1f} months")
+    print(f"ROI multiple (12-month):           {impact['roi_multiple_12m']:>10.1f}x")
     return impact
 
 
 def section_checklist(
-    r: dict[str, float], srm: dict[str, float | str], impact: dict[str, float]
+    r: dict[str, float],
+    srm: dict[str, float | str],
+    impact: dict[str, float],
+    guardrails: GuardrailReport,
 ) -> None:
     mde = CONSTANTS["MDE_ABSOLUTE"]
     print_section("EXPERIMENT QUALITY CHECKLIST", width=60)
@@ -797,8 +885,10 @@ def section_checklist(
         # Covariate balance (device/age_group/channel) is only shown as descriptive
         # crosstabs in the SRM section — no formal statistical test is computed.
         "Covariate balance": "not tested",
-        "Positive ROI": impact["roi_multiple"] > 1,
+        "Guardrails not violated": guardrails["ok"] if guardrails["measured"] else "not measured",
+        "Positive 12-month ROI": impact["roi_multiple_12m"] > 1,
     }
+
     for criterion, passed in checklist.items():
         if passed is True:
             status = "✅ PASS"
@@ -814,10 +904,17 @@ def section_checklist(
 
 
 def section_recommendation(
-    r: dict[str, float], srm: dict[str, float | str], seg_df: pd.DataFrame, impact: dict[str, float]
+    r: dict[str, float],
+    srm: dict[str, float | str],
+    seg_df: pd.DataFrame,
+    impact: dict[str, float],
+    guardrails: GuardrailReport,
 ) -> None:
     mde = CONSTANTS["MDE_ABSOLUTE"]
-    ship = (r["p_value"] < 0.05) and (r["absolute_lift"] >= mde) and (srm["p"] >= 0.01)
+    stats_ok = (r["p_value"] < 0.05) and (r["absolute_lift"] >= mde) and (srm["p"] >= 0.01)
+    # A guardrail violation (or unmeasured guardrails) blocks the ship decision.
+    ship = stats_ok and guardrails["ok"]
+    guard_text = guardrail_status_text(guardrails)
     print_section("FINAL RECOMMENDATION", width=60)
     n_sig = int(seg_df["significant"].sum()) if not seg_df.empty else 0
     n_tests = len(seg_df)
@@ -833,11 +930,21 @@ def section_recommendation(
             f"  4. Segment performance: {n_sig}/{n_tests} naive-significant, "
             f"{bonf_sig}/{n_tests} after Bonferroni correction"
         )
-        print(f"  5. Large business impact: +€{impact['annual_revenue']:,.0f}/year")
         print(
-            "  6. Guardrail metrics: not measured in this dataset — recommend "
-            "adding latency/error-rate guardrails before full rollout."
+            f"  5. Business impact: +€{impact['cumulative_12m_revenue']:,.0f} over 12 months "
+            f"(12 cohorts, amortised LTV; €{impact['monthly_revenue']:,.0f} first-month revenue, "
+            f"payback {impact['payback_months']:.1f} months)"
         )
+        print(f"  6. Guardrails: {guard_text}")
+    elif stats_ok and not guardrails["ok"]:
+        print("⛔ DO NOT SHIP — GUARDRAIL CHECK FAILED")
+        print("\nJustification:")
+        print(
+            f"  1. Primary metric is significant (p={r['p_value']:.4f}), lift {r['absolute_lift']:+.2%}"
+        )
+        print(f"  2. Guardrails: {guard_text}")
+        print("  3. A win on the primary metric does not justify shipping a change that")
+        print("     harms a guardrail — investigate and fix before full rollout.")
     elif r["p_value"] < 0.05 and r["absolute_lift"] < mde:
         print("⚠️  SIGNIFICANT BUT BELOW MDE — iterate before full rollout")
         print("\nJustification:")
@@ -845,11 +952,16 @@ def section_recommendation(
         print(f"  2. Lift {r['absolute_lift']:+.2%} is below the +{mde:.0%} MDE target")
         print("  3. Effect is real but below the threshold we designed for — consider")
         print("     whether the business case still holds at this effect size.")
+        print(f"  4. Guardrails: {guard_text}")
     else:
         print("❌ DO NOT SHIP — results not statistically significant")
+        print(f"\nGuardrails: {guard_text}")
 
     print("\nNext Steps:")
-    print("  1. Roll out progress bar to all users (if shipped)")
+    if ship:
+        print("  1. Roll out progress bar to all users")
+    else:
+        print("  1. Resolve the blocking issue above before rollout")
     print(
         "  2. Design a separate experiment for the 45+ segment (e.g. video tutorial or live chat)"
     )
@@ -962,15 +1074,18 @@ def section_sensitivity(r: dict[str, float]) -> None:
 
 
 # ── Sprint-1 section printers (A1-A4) ────────────────────────────────────────
-def section_guardrails(df: pd.DataFrame) -> list[dict[str, float]]:
-    """A1: guardrail metrics — confirm the feature didn't hurt churn / revenue."""
+def section_guardrails(df: pd.DataFrame) -> GuardrailReport:
+    """A1: guardrail metrics — confirm the feature didn't hurt churn / revenue.
+
+    Returns the shared ``GuardrailReport``; the verdict is computed once by
+    ``guardrail_verdict`` and reused by the recommendation section.
+    """
     print_section("GUARDRAIL METRICS (churn & revenue)", width=60)
     guardrails = [
         ("churned_30d", "lower", "30-day churn", "%"),
         ("revenue_30d_eur", "higher", "30-day revenue", "€"),
     ]
-    results: list[dict[str, float]] = []
-    all_ok = True
+    results: list[dict[str, Any]] = []
     for col, direction, label, unit in guardrails:
         if col not in df.columns:
             print(f"\n⚠️  {col} not in dataset — guardrail skipped.")
@@ -985,7 +1100,6 @@ def section_guardrails(df: pd.DataFrame) -> list[dict[str, float]]:
         print(f"  Two-sided p:   {g['p_two_sided']:.4f}")
         print(f"  Bad-direction p (one-sided): {g['p_bad_direction']:.4f}")
         if g["violated"]:
-            all_ok = False
             print("  ❌ GUARDRAIL VIOLATED — significant movement in the BAD direction")
         else:
             moved = g["p_two_sided"] < 0.05
@@ -1000,15 +1114,19 @@ def section_guardrails(df: pd.DataFrame) -> list[dict[str, float]]:
             else:
                 print("  ✅ Guardrail OK — no significant movement")
 
+    report = guardrail_verdict(results)
     print_subsection("GUARDRAIL VERDICT")
-    if all_ok:
-        print("✅ All guardrails OK — safe to ship from a guardrail standpoint.")
+    print(guardrail_status_text(report))
+    if not report["measured"]:
+        print("   Guardrail verdict is not a pass: the ship decision cannot rely on")
+        print("   metrics that were never measured.")
+    elif report["ok"]:
         print("   Note: churn & revenue are downstream of KYC completion, so the")
         print("   favorable drift is expected; the check guards against a NEGATIVE")
         print("   side-effect (e.g. the progress bar adding friction elsewhere).")
     else:
-        print("❌ At least one guardrail violated — DO NOT ship without investigation.")
-    return results
+        print("   DO NOT ship without investigating the violated guardrail.")
+    return report
 
 
 def section_hte(df: pd.DataFrame) -> pd.DataFrame:
@@ -1129,15 +1247,15 @@ def main() -> None:
     section_sample_size()
     srm = section_srm(df)
     r = section_primary(df)
-    section_guardrails(df)
+    guardrails = section_guardrails(df)
     section_hte(df)
     section_sequential(df, r)
     section_power_curve(r)
     section_ab_conversion(r, srm)
     section_segments(seg_df)
     impact = section_business(r)
-    section_checklist(r, srm, impact)
-    section_recommendation(r, srm, seg_df, impact)
+    section_checklist(r, srm, impact, guardrails)
+    section_recommendation(r, srm, seg_df, impact, guardrails)
     section_multiple_testing(seg_df)
     section_aa(df)
     section_cuped(df)
