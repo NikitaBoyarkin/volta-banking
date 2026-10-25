@@ -295,3 +295,24 @@ def test_guardrail_violation_blocks_ship_decision(capsys) -> None:
     assert "DO NOT SHIP — GUARDRAIL CHECK FAILED" in out
     assert "SHIP THE FEATURE" not in out
     assert "churned_30d" in out
+
+
+def test_segment_table_uses_uncorrected_chi2() -> None:
+    """README quotes Welch p = 0.59 for 45+; scipy's default Yates correction
+    inflates it to 0.63 and desynchronises the table from the report."""
+    from scipy import stats
+
+    df = pd.read_csv(ab.data_path("volta_ab_experiment.csv"))
+    seg = pd.read_csv(ab.data_path("segment_results.csv")).set_index("segment")
+    sub = df[df["age_group"] == "45+"]
+    control = sub[sub["group"] == "control"]["kyc_completed"]
+    treatment = sub[sub["group"] == "treatment"]["kyc_completed"]
+    table = np.array(
+        [
+            [treatment.sum(), len(treatment) - treatment.sum()],
+            [control.sum(), len(control) - control.sum()],
+        ]
+    )
+    expected = stats.chi2_contingency(table, correction=False)[1]
+    assert seg.loc["age_group=45+", "p_value"] == pytest.approx(round(expected, 4))
+    assert seg.loc["age_group=45+", "p_value"] < 0.61

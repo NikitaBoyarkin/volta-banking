@@ -150,7 +150,9 @@ def compute_segment_results(df: pd.DataFrame) -> pd.DataFrame:
                     [c.sum(), len(c) - c.sum()],
                 ]
             )
-            _, p_value, _, _ = stats.chi2_contingency(table)
+            # No Yates correction: it over-corrects at these cell sizes and makes
+            # the table disagree with the Welch t-test quoted in README (0.6294 vs 0.5931).
+            _, p_value, _, _ = stats.chi2_contingency(table, correction=False)
             rows.append(
                 {
                     "segment": f"{col}={v}",
