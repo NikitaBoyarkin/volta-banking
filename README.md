@@ -304,6 +304,11 @@ volta-banking/
 
 - **[Аналитический борд](docs/board/volta_board.html)** — все 23 проекта на одной
   странице, без установки.
+- **Смежные репозитории** — отдельные разборы на других данных:
+  [RFM-сегментация банковских клиентов](https://github.com/NikitaBoyarkin/rfm-analysis-of-bank-clients)
+  (Джини 0,324, топ-20 % клиентов дают 38,2 % выручки) ·
+  [churn-prediction](https://github.com/NikitaBoyarkin/churn-prediction) ·
+  [sql-analytics-case-study](https://github.com/NikitaBoyarkin/sql-analytics-case-study).
 - **[PRD v2](docs/prd-v2.md)** — что входило в ограниченное переоткрытие
   портфолио. Запись о решении: [ADR 0001](docs/adr/0001-bounded-reopen-volta-2.0.md).
 - **`notebooks/`** — исполненные ноутбуки проектов 1–4 с выводами по шагам.
