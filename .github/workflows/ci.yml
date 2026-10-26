@@ -37,8 +37,16 @@ jobs:
       # and cross-refs only, no warehouse — it never opens the board's file
       # sources. The render below is what proves the board can actually be
       # built. The portfolio site re-renders it from this repo at deploy time.
+      #
+      # The version is pinned on purpose. An unpinned `uvx --from dbt-charts`
+      # pulled 0.10.0, whose grammar had moved: `--strict` turned the resulting
+      # WARN-SCHEMA-MIGRATED into a red build, and 0.10.0's renderer cannot
+      # ingest data/charts/funnel.csv at all (Arrow "ResourceInUseException" on
+      # `activation_rate` / `funnel_steps`), so migrating the board alone would
+      # move the failure one step down. Bump both pins together, with
+      # `dct migrate charts/`, once a release renders this board.
       - name: Validate dbt-charts board
-        run: uvx --from dbt-charts dct validate charts/volta-core.yml --strict
+        run: uvx --from dbt-charts==0.9.1 dct validate charts/volta-core.yml --strict
 
       # data/charts/funnel.csv is derived (scripts/build_charts_data.py) and
       # gitignored, so a fresh checkout carries no board data at all and
@@ -49,6 +57,6 @@ jobs:
 
       - name: Render dbt-charts board
         run: |
-          uvx --from dbt-charts dct render charts/volta-core.yml \
+          uvx --from dbt-charts==0.9.1 dct render charts/volta-core.yml \
             --format html \
             --output "$RUNNER_TEMP/volta-core.html"
