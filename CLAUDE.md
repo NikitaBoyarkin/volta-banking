@@ -15,10 +15,12 @@ educational/demonstrative. Each script picks up where the previous one ended.
 - **Package manager:** `uv` (preferred). Keep `uv.lock` in sync with `pyproject.toml`.
 - **Linter/formatter:** `ruff` (dev dependency; configured in `pyproject.toml`:
   `select = ["E","W","F","I","B","C4","UP"]`, `ignore = ["E501"]`, excludes `*.ipynb`).
-- **Type checking:** `mypy` (config in `pyproject.toml`; the four legacy scripts are
-  marked `# mypy: ignore-errors`, new Sprint 3+ code is typed and checked).
-- **Coverage:** `pytest-cov` (default `addopts` in `pyproject.toml`; ~96% on active
-  code). Legacy `utils/pdf_processor.py` + `utils/report_generator.py` are omitted.
+- **Type checking:** `mypy` (config in `pyproject.toml`; all 24 `scripts/volta_*.py`
+  are listed in `[tool.mypy] files`, four legacy pandas modules carry
+  `# mypy: ignore-errors` and are named in the config comment).
+- **Coverage:** `pytest-cov` (default `addopts` in `pyproject.toml`; gated at 90% via
+  `--cov-fail-under=90`, current run 97%). Legacy `utils/pdf_processor.py` +
+  `utils/report_generator.py` are omitted.
 - **Pre-commit:** `.pre-commit-config.yaml` runs ruff + pytest before commits
   (`uv run pre-commit install` once).
 
@@ -252,13 +254,16 @@ All generators write to `data/` and are seeded (`SEED = 42`). `make data` runs t
 ## Working with This Codebase
 
 - **Test suite + coverage.** `uv run pytest` runs 58+ tests including end-to-end
-  smoke tests that execute each `main()`. Coverage (~96% on active code) is on by
-  default via `addopts`. `PYTHONPATH=.:scripts uv run python -c "import volta_X"`
+  smoke tests that execute each `main()`. Coverage is on by default via `addopts`
+  and gated at 90% (`--cov-fail-under=90`). `PYTHONPATH=.:scripts uv run python -c "import volta_X"`
   must not print analysis (confirms the `main()` structure).
 - **Ruff is configured.** `uv run ruff check .` should pass clean; `ruff format .`
   for whitespace/style. Pre-commit runs both automatically.
-- **mypy checks new code only.** The four legacy scripts carry `# mypy: ignore-errors`;
-  new Sprint 3+ scripts must be typed and pass `uv run mypy`.
+- **mypy checks every analysis.** 24 `scripts/volta_*.py` plus `build_impact.py`,
+  `build_board.py` and `utils/common.py` are in `[tool.mypy] files` (27 entries).
+  `tests/test_type_coverage.py` fails if a new `volta_*.py` is added without being
+  listed, and if an `# mypy: ignore-errors` marker drifts from the pyproject
+  comment that names those modules.
 - **`select_k` runtime:** `silhouette_score` is O(n²); on 50k users it
   subsamples to 10k points (~7s for the full K=2..8 sweep). Same subsample
   pattern in `plot_silhouette` (5k) — keep it if you touch either.

@@ -31,13 +31,13 @@
 <section class="slide">
   <div class="kicker">Product Analytics Portfolio · Fintech</div>
   <h1>Volta Neobank</h1>
-  <p class="sub">Nine projects, one narrative: <b>discover → validate → measure → optimize</b>.</p>
-  <p class="sub" style="margin-top:1rem">Synthetic data · seeded generators · reproducible · 101 tests · 97% coverage</p>
+  <p class="sub">Twenty-three projects, one narrative: <b>discover → validate → measure → optimize</b>.</p>
+  <p class="sub" style="margin-top:1rem">Synthetic data · seeded generators · reproducible · 281 tests · 97% coverage</p>
   <div class="grid">
-    <div class="card"><div class="k">Projects</div><div class="v">9</div><div class="d">funnel → A/B → retention → segmentation → churn → RFM → CLV → attribution → anomaly</div></div>
-    <div class="card"><div class="k">A/B lift</div><div class="v">+6.2pp</div><div class="d">KYC progress bar, p&lt;0.0001, no SRM</div></div>
-    <div class="card"><div class="k">M3 retention</div><div class="v">+9.2pp</div><div class="d">after the fix; +€227K/yr LTV</div></div>
-    <div class="card"><div class="k">Test suite</div><div class="v">101</div><div class="d">unit + end-to-end smoke, 97% coverage</div></div>
+    <div class="card"><div class="k">Projects</div><div class="v">23</div><div class="d">funnel → A/B → retention → segmentation → churn → RFM → CLV → attribution → anomaly → Market &amp; Jobs → CAC → causal</div></div>
+    <div class="card"><div class="k">A/B lift</div><div class="v">+5.72pp</div><div class="d">KYC progress bar, p&lt;0.0001, no SRM</div></div>
+    <div class="card"><div class="k">M3 retention</div><div class="v">+9.2pp</div><div class="d">after the fix; +€282K/yr LTV</div></div>
+    <div class="card"><div class="k">Test suite</div><div class="v">281</div><div class="d">unit + end-to-end smoke, 97% coverage</div></div>
   </div>
 </section>
 
@@ -73,10 +73,10 @@
   <div class="row">
     <img src="../outputs/cohort_heatmap.png" alt="cohort" style="max-width:420px">
     <ul>
-      <li>M1 retention +10pp step-change after the Sep 2024 fix</li>
+      <li>M1 retention +11.8pp step-change after the Sep 2024 fix</li>
       <li>M3 retention +9.2pp (Welch t-test + Cohen's d)</li>
-      <li>Premium vs Free LTV = <b>4.3×</b> (ARPU 2.66× × retention 1.62×)</li>
-      <li>Fleet impact: <b>+€227K/yr</b> incremental LTV</li>
+      <li>Premium vs Free LTV = <b>2.7×</b> — ARPU only: the retention matrix carries no tariff split, so a retention-driven gap is not measurable here</li>
+      <li>Portfolio impact: <b>+€282K/yr</b> incremental LTV</li>
     </ul>
   </div>
 </section>
@@ -87,21 +87,25 @@
     <ul>
       <li>K=4 chosen from data (marginal-gain elbow + silhouette)</li>
       <li>Power 12% / Growth 24% / Casual 32% / Dormant 32%</li>
-      <li>Lorenz: 12% of users → 41% of revenue</li>
-      <li>Monetization: +€310K/yr from segment migration</li>
+      <li>Lorenz: 12% of users → 41% of revenue; 68% of users → 80%</li>
+      <li>Dormant still brings 8% of revenue — measurable win-back headroom</li>
     </ul>
     <img src="../outputs/segmentation_pca_scatter.png" alt="pca" style="max-width:400px">
   </div>
 </section>
 
 <section class="slide">
-  <h2>5-9 · Extended portfolio</h2>
+  <h2>5–23 · Extended portfolio</h2>
   <div class="grid">
-    <div class="card"><div class="k">Churn prediction</div><div class="v">RF +0.03</div><div class="d">ROC-AUC over logistic; top driver = inactivity</div></div>
+    <div class="card"><div class="k">Churn prediction</div><div class="v">RF +0.03</div><div class="d">ROC-AUC over logistic; top driver = device-error rate</div></div>
     <div class="card"><div class="k">RFM</div><div class="v">7 segs</div><div class="d">Champions→Lost lifecycle scoring</div></div>
     <div class="card"><div class="k">CLV</div><div class="v">3 methods</div><div class="d">historical · retention-curve · Gamma-Gamma</div></div>
     <div class="card"><div class="k">Attribution</div><div class="v">4 models</div><div class="d">first/last/linear/Shapley — referral wins</div></div>
     <div class="card"><div class="k">Anomaly</div><div class="v">IF F1 .50</div><div class="d">Isolation Forest beats single-amount detectors</div></div>
+    <div class="card"><div class="k">Segment offers</div><div class="v">+3.3…4.2pp</div><div class="d">significant after Holm; anchor still 3× stronger</div></div>
+    <div class="card"><div class="k">Win-back ROI</div><div class="v">2.54×</div><div class="d">light-touch, 30–60 days only; human calls never repay</div></div>
+    <div class="card"><div class="k">Anchor CAC</div><div class="v">1.76×</div><div class="d">LTV/CAC at SOM; the ≥3× gate holds only to ~70K users</div></div>
+    <div class="card"><div class="k">Causal (DiD)</div><div class="v">+9.2pp</div><div class="d">retention lift survives the causal test — not a time trend</div></div>
   </div>
 </section>
 
@@ -110,7 +114,7 @@
   <ul>
     <li>One data-driven loop from diagnosis to ship decision and long-term measurement</li>
     <li>Rigorous stats: CUPED, AA-tests, SRM, multiple-testing correction, bootstrap CIs</li>
-    <li>Reproducible: seeded generators, `make data`, 101 tests, pre-commit, CI</li>
+    <li>Reproducible: seeded generators, `make data`, 281 tests, pre-commit, CI</li>
     <li>An ML + product-analytics depth few candidates can show in one repo</li>
   </ul>
 </section>

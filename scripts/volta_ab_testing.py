@@ -745,6 +745,18 @@ def guardrail_status_text(guardrails: GuardrailReport) -> str:
     return "✅ no guardrail violated (30-day churn, 30-day revenue)"
 
 
+def projected_impact(df: pd.DataFrame) -> dict[str, float]:
+    """Pure end-to-end projection: measured lift → revenue impact.
+
+    Single entry point so ``scripts/build_impact.py`` publishes exactly the
+    numbers the console report prints, from the same code path.
+    """
+    r = primary_analysis(df)
+    impact = business_impact(float(r["absolute_lift"]))
+    impact["absolute_lift"] = float(r["absolute_lift"])
+    return impact
+
+
 # ── Section printers ──────────────────────────────────────────────────────────
 def section_setup(df: pd.DataFrame) -> None:
     print_section("VOLTA NEOBANK — KYC PROGRESS BAR A/B TEST", blank=False)

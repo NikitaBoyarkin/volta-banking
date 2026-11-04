@@ -12,7 +12,8 @@ projects with PCA, and proposes per-segment monetization scenarios.
 
 Portfolio context:
 - Project 1: Identified KYC as the critical funnel bottleneck
-- Project 2: Proved the KYC progress bar fix works (+5.72pp, p<0.0001)
+- Project 2: Proved the KYC progress bar fix works (effect published in
+  `outputs/impact.json`)
 - Project 3: Showed retention improved post-fix and revealed the Premium/Free
   LTV gap (ARPU × retention decomposition)
 - Project 4 (this): Segments users and designs per-segment monetization strategy
@@ -23,6 +24,7 @@ segment_profiles.csv
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -923,14 +925,14 @@ PORTFOLIO = [
     {
         "project": "Project 2 — A/B Testing",
         "skill": "Solution Validation",
-        "output": "Proved KYC progress bar works (+5.72pp, Z=5.82, p<0.0001)",
+        "output": "Proved the KYC progress bar works",
         "business_impact": "Enabled confident full-fleet rollout",
     },
     {
         "project": "Project 3 — Retention & Cohort",
         "skill": "Long-Term Impact Measurement",
-        "output": "KYC fix improved Free LTV by ~20% (+€3.6 per free user)",
-        "business_impact": "Quantified long-term ROI of the fix (€227K/year)",
+        "output": "Measured the KYC fix's effect on 12-month LTV",
+        "business_impact": "Quantified the long-term ROI of the fix",
     },
     {
         "project": "Project 4 — User Segmentation",
@@ -940,15 +942,46 @@ PORTFOLIO = [
     },
 ]
 
+# Effect numbers come from the published artifact, never from a literal here.
+CAPSTONE_IMPACT: dict[str, tuple[str, str]] = {
+    "Project 2 — A/B Testing": ("kyc_lift_pp", "+{value:.2f} pp KYC completion lift"),
+    "Project 3 — Retention & Cohort": (
+        "retention_incremental_ltv_eur",
+        "€{value:,.0f}/year incremental LTV",
+    ),
+}
+
+
+def load_impact() -> dict[str, dict[str, object]]:
+    """Read outputs/impact.json (written by scripts/build_impact.py).
+
+    Missing artifact → empty dict; the capstone then says so instead of
+    printing an unverified number.
+    """
+    path = OUTPUT_DIR / "impact.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
 
 def section_capstone() -> None:
     print_section("CAPSTONE: Product Analytics Portfolio Summary")
+    impact = load_impact()
     print("\nProject progression:")
     for item in PORTFOLIO:
         print(f"\n{item['project']}")
         print(f"  Skill demonstrated:  {item['skill']}")
         print(f"  Key output:          {item['output']}")
         print(f"  Business impact:     {item['business_impact']}")
+        spec = CAPSTONE_IMPACT.get(item["project"])
+        if spec is None:
+            continue
+        key, template = spec
+        entry = impact.get(key)
+        if entry is None:
+            print(f"  Measured effect:     n/a — run `make impact` to publish {key}")
+        else:
+            print(f"  Measured effect:     {template.format(value=entry['value'])}")
     print(f"\n{'=' * 70}")
     print("META-NARRATIVE: The Data-Driven Product Loop")
     print(f"{'=' * 70}")

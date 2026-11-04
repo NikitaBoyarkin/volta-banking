@@ -1,15 +1,14 @@
-# Retention Curves — Free vs Premium Plans
+# Retention Curves — Pre-fix vs Post-fix Cohorts
 
-![Retention Curves — Free vs Premium Plans](retention_curves_free_vs_premium.png)
+![Retention Curves — Pre-fix vs Post-fix Cohorts](retention_curves_free_vs_premium.png)
 
-*Доля активных пользователей по месяцам: тарифы Free и Premium до и после починки KYC.*
+*Средняя доля активных пользователей по месяцам до и после починки KYC (Free+Premium вместе: разреза по тарифу в данных нет).*
 
 ## Выводы
 
-- Premium удерживаются заметно лучше: M6 = 60% против Free M6 = 31%.
-- Починка KYC поднимает обе кривые (Free +10 п.п. на M6).
-- LTV Premium в 4.3× выше Free — за счёт и более высокого ARPU, и лучшего удержания.
-- Стратегия: нацелить апгрейды на Premium среди high-intent Free-пользователей в первые 1–2 месяца.
+- M6-удержание: 20% до фикса и 32% после (+12 п.п.); обе кривые — средние по когортам файла.
+- Кривые построены из data/cohort_retention_matrix.csv, а не из констант в коде.
+- Тарифный разрез недоступен: матрица не различает Free и Premium, поэтому LTV тарифов отличается только через ARPU, а не через удержание.
 
 ---
 <sub>Источник: `scripts/volta_retention_analysis.py` · данные: `data/cohort_retention_matrix.csv`</sub>

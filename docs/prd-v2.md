@@ -54,6 +54,23 @@ v1's freeze was correct while the project was being built. It is now the binding
 
 ### Goal A — Conversion (primary)
 
+#### Goal A.1 — North-star metric
+
+**Click-to-repository rate (30 days).** The share of readers who open the Volta landing page and then click through to the GitHub repository within 30 days of that first pageview. This is the only Goal A metric that observes reader behaviour rather than a property of the artifact.
+
+| Field | Value |
+|-------|-------|
+| Definition | `unique persons in the landing cohort with repo_clicked` ÷ `unique persons in the landing cohort`, where the cohort is everyone with a `$pageview` on `/projects/volta/` in the window; the numerator is restricted to that cohort so the ratio cannot exceed 100% |
+| Baseline | **unknown (no instrumentation before release)** — nothing in the repo or the site emitted board/repo/contact events before this requirement. The first 30-day window after instrumentation ships establishes the baseline; it is not estimated here. |
+| Target | **10%** — 1 in 10 landing-page readers reach the repository. Treated as an **assumption**, to be recalibrated against the first measured window, not as an inherited benchmark. |
+| Measurement | PostHog events `board_opened`, `repo_clicked`, `contact_clicked`; event contract in [`analytics-events.md`](analytics-events.md) |
+
+**Why 10%.** For a niche technical portfolio the repository *is* the proof — a reader who is already evaluating runnable code is a high-intent visitor, so 1 in 10 is the smallest rate that still distinguishes a working funnel from noise at this traffic order of magnitude. If the first measured window comes in below it, that gap is a finding about the funnel, not a target to explain away.
+
+**Gate.** Thirty days after instrumentation ships, a numeric report must exist in `reports/`. Missing data counts as **gate failure** (REQ-006 AC3), not as "no signal".
+
+**Secondary — artifact-property checks.** The five rows below verify that the artifact exists and is reachable. They remain useful, but none of them observes a reader, so none can carry the conversion goal on its own. Where the last row says "non-blocking", the north-star gate above supersedes it.
+
 | Metric | Baseline | Target | Measurement |
 |--------|----------|--------|-------------|
 | Zero-install recruiter artifact | none | HTML board live, opens in a browser with no install, renders from committed CSVs | HTTP 200; manual open test |
@@ -88,6 +105,8 @@ v1's freeze was correct while the project was being built. It is now the binding
 - [ ] A single HTML board opens from a link with no installation and no build step.
 - [ ] It shows, per project, the business question, the key metric, and a rendered chart sourced from the repo's committed CSVs.
 - [ ] The README's first screen links to the board and carries a one-paragraph hook.
+- [ ] **Proxy for "5 minutes" (REQ-006):** the [click-to-repository rate](#goal-a--conversion-primary) meets its target, **and** among readers who click to the repo the median elapsed time from their landing pageview to `repo_clicked` is ≤ 5 minutes. This is a proxy for decision speed, not a measurement of understanding — it becomes verifiable only once the events in [`analytics-events.md`](analytics-events.md) ship.
+- [ ] **Page-level check:** the board's first screen carries question → key metric → rendered chart for the four core modules (funnel, A/B, retention, segmentation) without scrolling. Manual check at board build; no automated mechanism yet.
 
 ### Story 2 — Hiring manager: depth signal
 **As a** hiring manager who knows the standard portfolyo tropes, **I want to** see the candidate test their *own* claim rather than assert it, **so that I can** read seniority and statistical judgment.
@@ -314,6 +333,7 @@ data/*.csv ⇐ generate_*.py (seeded)   outputs/*.png   docs/board/volta_board.h
 
 ### Checkpoint B — 30 days after
 - [ ] Board linked from the landing page; pageview delta observed (PostHog, non-blocking).
+- [ ] **North-star gate (REQ-006):** click-to-repository rate reported as a number with its window and denominator; a missing measurement fails the checkpoint.
 - [ ] Case-study post published.
 - [ ] No doc drift reintroduced.
 

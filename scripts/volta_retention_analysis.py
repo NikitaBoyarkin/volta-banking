@@ -7,15 +7,15 @@ Industry: Fintech / Digital Banking
 Type: Cohort Analysis · Retention · LTV Projection
 
 Tracks how user retention evolves across monthly cohorts, measures the impact
-of the KYC progress bar fix (Project 2), and projects 12-month LTV impact with
-plan-specific retention curves (Free vs Premium).
+of the KYC progress bar fix (Project 2), and projects 12-month LTV impact from
+the retention curves measured in the cohort matrix.
 
 Business questions answered:
 1. How does retention evolve across monthly cohorts?
 2. Is there a visible step-change in retention after the Sep 2024 KYC fix?
 3. Which acquisition channels produce the most retained users?
-4. What is the LTV gap between Free and Premium users (decomposed into ARPU
-   and retention components)?
+4. What is the LTV gap between Free and Premium users (ARPU component only —
+   the cohort matrix carries no plan dimension)?
 5. What is the 12-month LTV impact of the KYC improvement?
 
 Data: produced by `generate_retention_data.py` → cohort_retention_matrix.csv
@@ -23,6 +23,7 @@ Data: produced by `generate_retention_data.py` → cohort_retention_matrix.csv
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib
@@ -37,26 +38,22 @@ FIX_CUTOFF = "2024-09"  # cohorts >= this date are "post-fix"
 
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-# All assumptions centralised with provenance. Retention curves are the % of a
-# cohort active in each month (M0=1.0). Free and Premium have SEPARATE curves:
-# Premium users retain materially better (M6 ≈ 0.55 vs Free ≈ 0.21 pre-fix), so
-# the Premium/Free LTV gap reflects BOTH retention and ARPU — not ARPU alone
-# (which was the bug in the prior version: it reused the Free curve for Premium,
-# collapsing the gap to a pure 2.66× ARPU artifact).
+# Assumptions the data cannot supply (ARPU by plan, fleet flow). Everything the
+# data CAN supply — the 12-month retention curves — is derived from
+# `data/cohort_retention_matrix.csv` by `build_retention_curves()`; no retention
+# number is hardcoded here any more.
+#
+# Caveat: the cohort matrix is PLAN-AGNOSTIC (see
+# `section_insight34_channel_plan`). It has no free/premium column, so the
+# empirical curves are the blended population. Plan LTV therefore differs only
+# through ARPU; a plan-specific retention gap is NOT measurable from this data.
 PARAMS: dict[str, object] = {
-    # Monthly ARPU (EUR). Source: retention-analysis assumptions.
+    # Monthly ARPU (EUR). Source: portfolio business assumptions.
     "monthly_arpu_free": CONSTANTS["MONTHLY_ARPU_FREE_EUR"],  # 3.2
     "monthly_arpu_premium": CONSTANTS["MONTHLY_ARPU_PREMIUM_EUR"],  # 8.5
     # Fleet assumptions for LTV projection. Source: portfolio narrative.
     "monthly_new_activated_users": CONSTANTS["MONTHLY_NEW_ACTIVATED_USERS"],  # 5000
     "premium_plan_share": CONSTANTS["PREMIUM_PLAN_SHARE"],  # 0.18
-    # Free retention curves (12 months, M0=1.0). Match generate_retention_data.py.
-    "free_pre_curve": [1.00, 0.52, 0.38, 0.31, 0.26, 0.23, 0.21, 0.19, 0.18, 0.17, 0.16, 0.15],
-    "free_post_curve": [1.00, 0.64, 0.49, 0.41, 0.36, 0.33, 0.31, 0.29, 0.28, 0.27, 0.26, 0.25],
-    # Premium retention curves — separate from Free (the prior version reused
-    # the Free curve, which understated the Premium LTV gap).
-    "premium_pre_curve": [1.00, 0.78, 0.70, 0.65, 0.61, 0.58, 0.55, 0.53, 0.51, 0.50, 0.49, 0.48],
-    "premium_post_curve": [1.00, 0.82, 0.75, 0.70, 0.66, 0.63, 0.60, 0.58, 0.56, 0.55, 0.54, 0.53],
 }
 
 
@@ -77,6 +74,33 @@ def cohort_metric_values(df: pd.DataFrame, cohorts: list[str], col: str) -> list
 def compute_ltv(curve: list[float], arpu: float) -> float:
     """12-month LTV = Σ(monthly retention × monthly ARPU)."""
     return float(sum(r * arpu for r in curve))
+
+
+def build_retention_curves(df: pd.DataFrame) -> dict[str, list[float]]:
+    """Empirical 12-month retention curves, pre vs post KYC fix.
+
+    Each curve is the unweighted mean of `month_0..month_11` across the cohorts
+    on its side of FIX_CUTOFF — the same aggregation `churn_curve()` uses, so
+    the two cannot disagree. Unobserved months (NaN, as in a real snapshot) are
+    skipped month by month rather than zero-filled: a month not yet reached is
+    not churn.
+
+    The matrix is plan-agnostic, so these are blended Free+Premium curves; it
+    carries no plan column to split them by.
+    """
+    months = [c for c in df.columns if c.startswith("month_")]
+    pre, post = split_cohorts(df.index)
+    curves: dict[str, list[float]] = {}
+    for side, cohorts in (("pre", pre), ("post", post)):
+        side_curve = df.loc[cohorts, months].mean(axis=0) if cohorts else None
+        curves[side] = [float(v) for v in side_curve.tolist()] if side_curve is not None else []
+    return curves
+
+
+@lru_cache(maxsize=1)
+def retention_curves() -> dict[str, list[float]]:
+    """Cached empirical curves for the on-disk cohort matrix (single source)."""
+    return build_retention_curves(load_data())
 
 
 def cohens_d(a: list[float], b: list[float]) -> float:
@@ -212,45 +236,36 @@ def plot_cohort_heatmap(df: pd.DataFrame, out: Path) -> Path:
 
 
 def plot_retention_curves(out: Path) -> Path:
-    """Free vs Premium retention curves (post-fix) with pre-fix references."""
+    """Measured retention curves (mean over cohorts), pre-fix vs post-fix."""
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     months = np.arange(12)
     labels = [f"M{i}" for i in months]
+    curves = retention_curves()
+    pre_curve = curves["pre"]
+    post_curve = curves["post"]
+    if not pre_curve or not post_curve:
+        # ponytail: one side missing → nothing to compare; ship the empty axis.
+        pre_curve = pre_curve or [0.0] * 12
+        post_curve = post_curve or [0.0] * 12
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
     ax.plot(
         months,
-        np.asarray(PARAMS["free_pre_curve"]) * 100,
+        np.asarray(pre_curve) * 100,
         "--",
         color="#4C9AFF",
-        alpha=0.5,
-        label="Free pre-fix",
+        alpha=0.6,
+        label="Pre-fix cohorts (measured)",
     )
     ax.plot(
         months,
-        np.asarray(PARAMS["free_post_curve"]) * 100,
+        np.asarray(post_curve) * 100,
         "o-",
-        color="#4C9AFF",
-        linewidth=2,
-        label="Free post-fix",
-    )
-    ax.plot(
-        months,
-        np.asarray(PARAMS["premium_pre_curve"]) * 100,
-        "--",
-        color="#36B37E",
-        alpha=0.5,
-        label="Premium pre-fix",
-    )
-    ax.plot(
-        months,
-        np.asarray(PARAMS["premium_post_curve"]) * 100,
-        "s-",
         color="#36B37E",
         linewidth=2,
-        label="Premium post-fix",
+        label="Post-fix cohorts (measured)",
     )
     ax.set_xticks(months)
     ax.set_xticklabels(labels)
@@ -260,43 +275,31 @@ def plot_retention_curves(out: Path) -> Path:
     ax.legend(loc="upper right")
     ax.grid(True, alpha=0.2)
 
-    free_m6_post = float(PARAMS["free_post_curve"][6]) * 100
-    prem_m6_post = float(PARAMS["premium_post_curve"][6]) * 100
+    m6_pre = float(pre_curve[6]) * 100
+    m6_post = float(post_curve[6]) * 100
     add_chart_context(
         fig,
-        title="Retention Curves — Free vs Premium Plans",
-        description="Percentage of users still active each month, comparing Free and Premium plans before/after the KYC fix.",
+        title="Retention Curves — Pre-fix vs Post-fix Cohorts",
+        description="Mean share of each cohort still active each month, before and after the Sep 2024 KYC fix (blended Free+Premium; the matrix has no plan split).",
     )
     return save_chart_report(
         fig,
         out,
-        title="Retention Curves — Free vs Premium Plans",
+        title="Retention Curves — Pre-fix vs Post-fix Cohorts",
         description_ru=(
-            "Доля активных пользователей по месяцам: тарифы Free и Premium до и после починки KYC."
+            "Средняя доля активных пользователей по месяцам до и после починки KYC "
+            "(Free+Premium вместе: разреза по тарифу в данных нет)."
         ),
         findings=[
-            f"Premium удерживаются заметно лучше: M6 = {prem_m6_post:.0f}% "
-            f"против Free M6 = {free_m6_post:.0f}%.",
-            f"Починка KYC поднимает обе кривые "
-            f"(Free +{(PARAMS['free_post_curve'][6] - PARAMS['free_pre_curve'][6]) * 100:.0f} "
-            "п.п. на M6).",
-            f"LTV Premium в {ltvs_ratio():.1f}× выше Free — за счёт и более высокого ARPU, "
-            "и лучшего удержания.",
-            "Стратегия: нацелить апгрейды на Premium среди high-intent Free-пользователей "
-            "в первые 1–2 месяца.",
+            f"M6-удержание: {m6_pre:.0f}% до фикса и {m6_post:.0f}% после "
+            f"(+{m6_post - m6_pre:.0f} п.п.); обе кривые — средние по когортам файла.",
+            "Кривые построены из data/cohort_retention_matrix.csv, а не из констант в коде.",
+            "Тарифный разрез недоступен: матрица не различает Free и Premium, поэтому "
+            "LTV тарифов отличается только через ARPU, а не через удержание.",
         ],
         script="scripts/volta_retention_analysis.py",
         source="data/cohort_retention_matrix.csv",
     )
-
-
-def ltvs_ratio() -> float:
-    """Post-fix Premium/Free LTV ratio for chart annotations."""
-    arpu_free = float(PARAMS["monthly_arpu_free"])
-    arpu_prem = float(PARAMS["monthly_arpu_premium"])
-    ltv_free = compute_ltv(PARAMS["free_post_curve"], arpu_free)
-    ltv_prem = compute_ltv(PARAMS["premium_post_curve"], arpu_prem)
-    return ltv_prem / ltv_free if ltv_free else 0.0
 
 
 # ── Sprint 1: R2 churn curve ────────────────────────────────────────────────
@@ -336,10 +339,10 @@ def ltv_bootstrap_ci(
 
     Resamples cohorts (rows of the retention matrix) with replacement, computes
     the mean retention curve per bootstrap sample, multiplies by `arpu` (and by
-    `premium_multiplier` for the premium-plan uplift), and sums to a 12-month
-    LTV. The CI reflects cohort-sampling uncertainty; the plan-specific
-    multiplier is an assumed constant from PARAMS (the cohort matrix is
-    plan-agnostic, so the free/premium split is layered on top).
+    `premium_multiplier` if a caller supplies one), and sums to a 12-month LTV.
+    The CI reflects cohort-sampling uncertainty. Analysis code passes no
+    multiplier: the cohort matrix is plan-agnostic, so no plan-specific
+    retention uplift can be measured.
 
     `side` ∈ {"pre", "post"} selects which cohorts to resample.
     """
@@ -422,76 +425,110 @@ def section_insight2_plateau(df: pd.DataFrame) -> None:
 
 def section_insight34_channel_plan() -> None:
     print_section("INSIGHT 3 & 4: Retention by Channel & Subscription Plan")
-    print("\nBy Plan (M6 retention, from LTV curves below):")
-    print("  • Free (pre-fix):     ~21%   ⚠️  Low retention")
-    print("  • Premium (pre-fix):  ~55%   ✅ ~2.6× better retention")
-    print("\n📌 Strategic insight: Premium plan is the #1 retention lever")
-    print("   Plan-based retention gap exceeds channel differences.")
-    print("\n⚠️  Channel-level retention (referral/organic/paid social) is not")
-    print("   available in this dataset — the cohort matrix is plan-agnostic.")
+    curves = retention_curves()
+    m6_pre = curves["pre"][6] if curves["pre"] else float("nan")
+    m6_post = curves["post"][6] if curves["post"] else float("nan")
+    print("\nBy side of the KYC fix (M6 retention, measured across cohorts):")
+    print(f"  • Pre-fix:   {m6_pre:.0%}")
+    print(f"  • Post-fix:  {m6_post:.0%}")
+    print("\n⚠️  Neither a plan nor a channel cut exists in this dataset: the cohort")
+    print("   matrix has one row per month and no free/premium or acquisition-source")
+    print("   column. Plan LTV differences below come from ARPU alone.")
     print("   Channel analysis lives in Project 1 (funnel) and Project 4 (segmentation).")
 
 
-def section_ltv() -> dict[str, float]:
+def compute_plan_ltvs() -> dict[str, float]:
+    """12-month LTV per plan and side of the fix, from the measured curves.
+
+    The curves are blended (the matrix has no plan column), so `retention_ratio`
+    is 1.0 by construction and the Premium/Free gap is the ARPU ratio.
+    """
     arpu_free = float(PARAMS["monthly_arpu_free"])
     arpu_prem = float(PARAMS["monthly_arpu_premium"])
+    curves = retention_curves()
+    curve_pre, curve_post = curves["pre"], curves["post"]
 
-    ltv_free_pre = compute_ltv(PARAMS["free_pre_curve"], arpu_free)  # type: ignore[arg-type]
-    ltv_free_post = compute_ltv(PARAMS["free_post_curve"], arpu_free)  # type: ignore[arg-type]
-    ltv_prem_pre = compute_ltv(PARAMS["premium_pre_curve"], arpu_prem)  # type: ignore[arg-type]
-    ltv_prem_post = compute_ltv(PARAMS["premium_post_curve"], arpu_prem)  # type: ignore[arg-type]
+    ltv_free_pre = compute_ltv(curve_pre, arpu_free)
+    ltv_free_post = compute_ltv(curve_post, arpu_free)
+    ltv_prem_pre = compute_ltv(curve_pre, arpu_prem)
+    ltv_prem_post = compute_ltv(curve_post, arpu_prem)
 
-    free_m6_pre = PARAMS["free_pre_curve"][6]  # type: ignore[index]
-    free_m6_post = PARAMS["free_post_curve"][6]  # type: ignore[index]
-    prem_m6_pre = PARAMS["premium_pre_curve"][6]  # type: ignore[index]
-    prem_m6_post = PARAMS["premium_post_curve"][6]  # type: ignore[index]
-
-    print_section("LTV CALCULATION: 12-MONTH PROJECTION")
-    print(f"\nFREE PLAN (ARPU €{arpu_free:.1f}/mo):")
-    print(f"  Pre-fix  (M6 ret {free_m6_pre:.0%}):  €{ltv_free_pre:.2f}")
-    print(f"  Post-fix (M6 ret {free_m6_post:.0%}):  €{ltv_free_post:.2f}")
     free_gain = ltv_free_post - ltv_free_pre
-    free_pct = (ltv_free_post / ltv_free_pre - 1) * 100
-    print(f"  Improvement:                 +€{free_gain:.2f} (+{free_pct:.0f}%)")
-
-    print(f"\nPREMIUM PLAN (ARPU €{arpu_prem:.1f}/mo, separate retention curve):")
-    print(f"  Pre-fix  (M6 ret {prem_m6_pre:.0%}):  €{ltv_prem_pre:.2f}")
-    print(f"  Post-fix (M6 ret {prem_m6_post:.0%}):  €{ltv_prem_post:.2f}")
     prem_gain = ltv_prem_post - ltv_prem_pre
-    prem_pct = (ltv_prem_post / ltv_prem_pre - 1) * 100
-    print(f"  Improvement:                 +€{prem_gain:.2f} (+{prem_pct:.0f}%)")
-
-    # Decompose the Premium/Free gap into ARPU and retention components.
-    ratio = ltv_prem_post / ltv_free_post
+    ratio = ltv_prem_post / ltv_free_post if ltv_free_post else 0.0
     arpu_ratio = arpu_prem / arpu_free
-    retention_ratio = float(sum(PARAMS["premium_post_curve"])) / float(
-        sum(PARAMS["free_post_curve"])
-    )  # type: ignore[arg-type]
-    print("\nPREMIUM vs FREE (post-fix):")
-    print(f"  Premium LTV is {ratio:.1f}× higher than Free")
-    print(
-        f"  Decomposition: ARPU ratio {arpu_ratio:.2f}× × retention-sum ratio {retention_ratio:.2f}× "
-        f"= {arpu_ratio * retention_ratio:.1f}×"
-    )
-    print("  → The gap reflects BOTH higher ARPU AND higher retention (the prior")
-    print("     version reused the Free curve for Premium, collapsing it to ARPU only).")
-    print("  → Monetization lever: convert free users to premium")
+    retention_ratio = float(sum(curve_post)) / float(sum(curve_pre)) if sum(curve_pre) else 0.0
     return {
         "ltv_free_pre": ltv_free_pre,
         "ltv_free_post": ltv_free_post,
         "ltv_prem_pre": ltv_prem_pre,
         "ltv_prem_post": ltv_prem_post,
         "free_gain": free_gain,
-        "free_pct": free_pct,
+        "free_pct": (ltv_free_post / ltv_free_pre - 1) * 100 if ltv_free_pre else 0.0,
         "prem_gain": prem_gain,
-        "prem_pct": prem_pct,
+        "prem_pct": (ltv_prem_post / ltv_prem_pre - 1) * 100 if ltv_prem_pre else 0.0,
         "ratio": ratio,
         "arpu_ratio": arpu_ratio,
         "retention_ratio": retention_ratio,
     }
 
 
-def section_fleet_impact(ltvs: dict[str, float]) -> dict[str, float]:
+def section_ltv() -> dict[str, float]:
+    arpu_free = float(PARAMS["monthly_arpu_free"])
+    arpu_prem = float(PARAMS["monthly_arpu_premium"])
+    ltvs = compute_plan_ltvs()
+
+    ltv_free_pre = ltvs["ltv_free_pre"]
+    ltv_free_post = ltvs["ltv_free_post"]
+    ltv_prem_pre = ltvs["ltv_prem_pre"]
+    ltv_prem_post = ltvs["ltv_prem_post"]
+    free_gain = ltvs["free_gain"]
+    free_pct = ltvs["free_pct"]
+    prem_gain = ltvs["prem_gain"]
+    prem_pct = ltvs["prem_pct"]
+
+    curves = retention_curves()
+    free_m6_pre = curves["pre"][6]
+    free_m6_post = curves["post"][6]
+
+    print_section("LTV CALCULATION: 12-MONTH PROJECTION")
+    print("\nCurves: mean retention per month across the cohorts on each side of")
+    print("the Sep 2024 KYC fix (data/cohort_retention_matrix.csv). The matrix is")
+    print("plan-agnostic, so both plans share the measured curve.\n")
+    print(f"FREE PLAN (ARPU €{arpu_free:.1f}/mo):")
+    print(f"  Pre-fix  (M6 ret {free_m6_pre:.0%}):  €{ltv_free_pre:.2f}")
+    print(f"  Post-fix (M6 ret {free_m6_post:.0%}):  €{ltv_free_post:.2f}")
+    print(f"  Improvement:                 +€{free_gain:.2f} (+{free_pct:.0f}%)")
+
+    print(f"\nPREMIUM PLAN (ARPU €{arpu_prem:.1f}/mo, same measured curve):")
+    print(f"  Pre-fix  (M6 ret {free_m6_pre:.0%}):  €{ltv_prem_pre:.2f}")
+    print(f"  Post-fix (M6 ret {free_m6_post:.0%}):  €{ltv_prem_post:.2f}")
+    print(f"  Improvement:                 +€{prem_gain:.2f} (+{prem_pct:.0f}%)")
+
+    # Decompose the Premium/Free gap. No retention multiplier is invented: the
+    # only measured ratio here is post/pre within the whole population.
+    ratio = ltvs["ratio"]
+    arpu_ratio = ltvs["arpu_ratio"]
+    retention_ratio = ltvs["retention_ratio"]
+    print("\nPREMIUM vs FREE (post-fix):")
+    print(f"  Premium LTV is {ratio:.2f}× higher than Free")
+    print(
+        f"  Decomposition: ARPU ratio {arpu_ratio:.2f}× × identical retention "
+        f"(plan split not measured) = {ratio:.2f}×"
+    )
+    print(f"  Measured post/pre retention-sum ratio for the population: {retention_ratio:.2f}×")
+    print("  → The plan gap is ARPU-only in this dataset. A plan-specific retention")
+    print("     gap needs a plan column in the cohort matrix (it has none).")
+    print("  → Monetization lever: convert free users to premium")
+    return ltvs
+
+
+def fleet_impact(ltvs: dict[str, float]) -> dict[str, float]:
+    """Per-cohort and annualised incremental revenue from the retention lift.
+
+    Pure: no printing, so `scripts/build_impact.py` can reuse the exact number
+    the console report shows.
+    """
     monthly_new = int(PARAMS["monthly_new_activated_users"])
     prem_share = float(PARAMS["premium_plan_share"])
     free_share = 1 - prem_share
@@ -503,7 +540,27 @@ def section_fleet_impact(ltvs: dict[str, float]) -> dict[str, float]:
         free_share * ltvs["ltv_free_post"] + prem_share * ltvs["ltv_prem_post"]
     )
     incremental = fleet_post - fleet_pre
-    annual = incremental * 12
+    return {
+        "fleet_pre": fleet_pre,
+        "fleet_post": fleet_post,
+        "incremental": incremental,
+        "annual": incremental * 12,
+    }
+
+
+def annual_retention_impact() -> float:
+    """€/year incremental LTV from the measured KYC-fix retention lift."""
+    return fleet_impact(compute_plan_ltvs())["annual"]
+
+
+def section_fleet_impact(ltvs: dict[str, float]) -> dict[str, float]:
+    monthly_new = int(PARAMS["monthly_new_activated_users"])
+    prem_share = float(PARAMS["premium_plan_share"])
+    fleet = fleet_impact(ltvs)
+    fleet_pre = fleet["fleet_pre"]
+    fleet_post = fleet["fleet_post"]
+    incremental = fleet["incremental"]
+    annual = fleet["annual"]
 
     print_section("FLEET-LEVEL BUSINESS IMPACT")
     print("\nAssumptions:")
@@ -518,12 +575,7 @@ def section_fleet_impact(ltvs: dict[str, float]) -> dict[str, float]:
     print(f"  €{annual:,.0f}/year from retention improvement alone")
     print("  (Steady-state assumption: 12 cohorts/yr each at the per-cohort figure;")
     print("   on top of the activation lift from Project 2.)")
-    return {
-        "fleet_pre": fleet_pre,
-        "fleet_post": fleet_post,
-        "incremental": incremental,
-        "annual": annual,
-    }
+    return fleet
 
 
 def section_cohort_summary(df: pd.DataFrame) -> None:
@@ -645,12 +697,13 @@ def section_cohort_heatmap(df: pd.DataFrame) -> Path:
 
 
 def section_retention_curves() -> Path:
-    """R4: Free vs Premium retention curves PNG."""
-    print_section("RETENTION CURVES — FREE VS PREMIUM")
+    """R4: measured pre-fix vs post-fix retention curves PNG."""
+    print_section("RETENTION CURVES — PRE-FIX VS POST-FIX")
     out = OUTPUT_DIR / "retention_curves_free_vs_premium.png"
     plot_retention_curves(out)
     print(f"\nSaved: {out.name}")
-    print("  Compares Free and Premium retention before/after the KYC fix.")
+    print("  Mean retention per month across pre-fix and post-fix cohorts;")
+    print("  both curves come from data/cohort_retention_matrix.csv.")
     return out
 
 
@@ -683,11 +736,10 @@ def section_ltv_bootstrap_ci(df: pd.DataFrame, ltvs: dict[str, float]) -> None:
     print_section("LTV BOOTSTRAP CONFIDENCE INTERVALS (12-month)")
     arpu_free = float(PARAMS["monthly_arpu_free"])
     arpu_prem = float(PARAMS["monthly_arpu_premium"])
-    # Premium uplift multiplier = (Σ premium curve) / (Σ free curve), from PARAMS.
-    prem_mult_pre = float(sum(PARAMS["premium_pre_curve"])) / float(sum(PARAMS["free_pre_curve"]))
-    prem_mult_post = float(sum(PARAMS["premium_post_curve"])) / float(
-        sum(PARAMS["free_post_curve"])
-    )
+    # No plan-specific retention multiplier: the matrix has no plan column, so
+    # the premium case reuses the measured curve (multiplier = 1.0).
+    prem_mult_pre = 1.0
+    prem_mult_post = 1.0
 
     cases = [
         ("Free    pre-fix", "free", "pre", arpu_free, 1.0, ltvs["ltv_free_pre"]),
@@ -703,39 +755,40 @@ def section_ltv_bootstrap_ci(df: pd.DataFrame, ltvs: dict[str, float]) -> None:
         n = len(pre) if side == "pre" else len(post)
         print(f"{label:<20} {point:>10.2f}   [{lo:>7.2f}, {hi:>7.2f}]   {n:>8}")
     print("\n  CI reflects cohort-sampling uncertainty (bootstrap over cohorts,")
-    print("  n=5000). The premium/free retention split is an assumed multiplier")
-    print("  from PARAMS (the cohort matrix is plan-agnostic); the CI width is")
-    print("  driven by real cohort-to-cohort retention variability.")
+    print("  n=5000). Premium rows reuse the measured curve (no plan split in the")
+    print("  data), so their CI width equals the Free one.")
     print("  → Post-fix Free LTV CI sits above the pre-fix CI → the KYC-fix LTV")
     print("    gain is not explained by sampling noise alone.")
 
 
 def section_summary(ltvs: dict[str, float], test: dict[str, float]) -> None:
     print_section("SUMMARY: 6 KEY INSIGHTS & RECOMMENDATIONS")
+    curves = retention_curves()
+    m6_pre = curves["pre"][6] if curves["pre"] else float("nan")
     insights = [
         (
             1,
-            "M1 retention jumped ~+10pp after KYC fix",
+            f"M3 retention improved {test['difference'] * 100:+.1f}pp after the KYC fix",
             "Fix had a compounding long-term effect",
             "Monitor M6+ as post-fix cohorts mature",
         ),
         (
             2,
-            f"Retention plateaus ~{PARAMS['free_pre_curve'][6] * 100:.0f}% at M6 (pre-fix)",  # type: ignore[index]
+            f"Retention plateaus ~{m6_pre * 100:.0f}% at M6 (pre-fix, measured)",
             "Natural loyal user base exists",
             "Build features for this core segment",
         ),
         (
             3,
             "Channel-level retention is NOT measurable in this dataset",
-            "Cohort matrix is plan-agnostic; channel cuts live in Projects 1/4",
+            "Cohort matrix is plan- and channel-agnostic; those cuts live in Projects 1/4",
             "Add channel cohort tracking to compare referral vs organic",
         ),
         (
             4,
-            "Premium users: ~2.6× better M6 retention vs Free (0.55 vs 0.21 pre-fix)",
-            "Plan is the #1 retention driver",
-            "Design premium upgrade funnel (Project 4)",
+            "Plan-level retention is NOT measurable in this dataset either",
+            "The cohort matrix has no plan column, so plan LTV differs by ARPU only",
+            "Add a plan dimension to the cohort export before claiming a retention gap",
         ),
         (
             5,
@@ -745,7 +798,7 @@ def section_summary(ltvs: dict[str, float], test: dict[str, float]) -> None:
         ),
         (
             6,
-            f"Premium LTV (€{ltvs['ltv_prem_post']:.1f}) is {ltvs['ratio']:.1f}× Free",
+            f"Premium LTV (€{ltvs['ltv_prem_post']:.1f}) is {ltvs['ratio']:.1f}× Free (ARPU only)",
             "Monetization strategy is clear",
             "Push upgrade flows to M1–M2 high-intent users",
         ),

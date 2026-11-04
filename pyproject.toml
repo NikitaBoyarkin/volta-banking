@@ -47,8 +47,17 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.10"
-# The four legacy analysis scripts are dynamic pandas code (see CLAUDE.md) and
-# carry `# mypy: ignore-errors`; mypy enforces typing on NEW code (Sprint 3+).
+# Coverage (REQ-005 / PA-06): every `scripts/volta_*.py` analysis on disk is
+# listed below, plus the board builder, the impact artifact builder and shared
+# utils. `tests/test_type_coverage.py` fails when a new analysis is added
+# without an entry, so this list cannot silently fall behind.
+#
+# Exactly 4 modules carry `# mypy: ignore-errors` at the top of the file --
+# they are the legacy pandas-heavy analyses where retrofitting annotations
+# would risk changing runtime behaviour:
+#   volta_funnel_analysis.py, volta_ab_testing.py,
+#   volta_retention_analysis.py, volta_segmentation.py
+# Every other analysis module is type-checked without an ignore marker.
 ignore_missing_imports = true
 check_untyped_defs = false
 disallow_untyped_defs = false
@@ -67,6 +76,18 @@ files = [
     "scripts/volta_kyc_deep_dive.py",
     "scripts/volta_referral_segments.py",
     "scripts/volta_causal_kyc.py",
+    # Added by REQ-005: the nine analyses that were outside the gate.
+    "scripts/volta_ab_testing.py",
+    "scripts/volta_anchor_cac.py",
+    "scripts/volta_assisted_cac.py",
+    "scripts/volta_dormant_winback.py",
+    "scripts/volta_funnel_analysis.py",
+    "scripts/volta_fx_sourcing.py",
+    "scripts/volta_premium_offers.py",
+    "scripts/volta_retention_analysis.py",
+    "scripts/volta_segmentation.py",
+    "scripts/volta_feature_adoption.py",
+    "scripts/build_impact.py",
     "scripts/build_board.py",
     "utils/common.py",
 ]
@@ -74,7 +95,7 @@ files = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "scripts"]
-addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=volta_causal_kyc --cov=volta_assisted_cac --cov=volta_fx_sourcing --cov=volta_premium_offers --cov=volta_anchor_cac --cov=volta_dormant_winback --cov=build_board --cov=utils --cov-report=term-missing"
+addopts = "--cov=volta_funnel_analysis --cov=volta_ab_testing --cov=volta_retention_analysis --cov=volta_segmentation --cov=volta_churn_prediction --cov=volta_rfm_analysis --cov=volta_clv_modeling --cov=volta_attribution --cov=volta_anomaly_detection --cov=volta_jtbd_mapping --cov=volta_unit_economics --cov=volta_premium_upsell --cov=volta_kyc_deep_dive --cov=volta_referral_segments --cov=volta_causal_kyc --cov=volta_assisted_cac --cov=volta_fx_sourcing --cov=volta_premium_offers --cov=volta_anchor_cac --cov=volta_dormant_winback --cov=build_board --cov=utils --cov-report=term-missing --cov-fail-under=90"
 
 [tool.coverage.run]
 # utils/pdf_processor.py and utils/report_generator.py are legacy/speculative

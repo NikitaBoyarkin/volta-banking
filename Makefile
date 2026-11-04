@@ -1,7 +1,7 @@
 # Volta Neobank — task runner
-# Targets: make data | test | lint | format | type | board | publish-board | all
+# Targets: make data | impact | test | lint | format | type | board | publish-board | all
 
-.PHONY: data test lint format type board publish-board all setup
+.PHONY: data impact test lint format type board publish-board all setup
 
 setup:
 	uv sync --all-groups
@@ -37,6 +37,16 @@ data:
 	$(PY) scripts/generate_anchor_cac_data.py
 	$(PY) scripts/generate_dormant_winback_data.py
 
+# Publish every effect number the README quotes to outputs/impact.json.
+# Reads the generated datasets; runs no analysis end-to-end (no charts rewritten).
+impact:
+	$(PY) scripts/build_impact.py
+
+# Acquisition economics and feature-adoption depth over the three datasets
+# that had no reader. Writes charts, so it stays out of `all`.
+adoption:
+	$(PY) scripts/volta_feature_adoption.py
+
 test:
 	uv run pytest
 
@@ -63,5 +73,5 @@ publish-board: board
 	cp docs/board/volta_board.html "$(SITE_BOARD)/index.html"
 	@echo "Published board -> $(SITE_BOARD)/index.html"
 
-all: data test lint type
+all: data impact test lint type
 	@echo "All checks passed."

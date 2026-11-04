@@ -1,0 +1,26 @@
+{
+  "ab_cumulative_12m_revenue_eur": {
+    "horizon": "12m",
+    "source_file": "scripts/volta_ab_testing.py",
+    "unit": "eur",
+    "value": 208524.0289042308
+  },
+  "ab_roi_multiple_12m": {
+    "horizon": "12m",
+    "source_file": "scripts/volta_ab_testing.py",
+    "unit": "ratio",
+    "value": 13.90160192694872
+  },
+  "kyc_lift_pp": {
+    "horizon": "28d",
+    "source_file": "scripts/volta_ab_testing.py",
+    "unit": "pp",
+    "value": 5.719999999999992
+  },
+  "retention_incremental_ltv_eur": {
+    "horizon": "1y",
+    "source_file": "scripts/volta_retention_analysis.py",
+    "unit": "eur",
+    "value": 282363.9959999998
+  }
+}
